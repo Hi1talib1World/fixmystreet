@@ -265,6 +265,10 @@ FixMyStreet::override_config {
     subtest 'phishing warning is shown for new reports' => sub {
         $mech->log_out_ok;
         $mech->get_ok('/report/new?longitude=0.15356&latitude=51.45556&category=Lamp+post');
+    };
+
+    subtest 'phishing warning is shown on report pages' => sub {
+        $mech->get_ok('/report/' . $report->id);
         $mech->content_contains('if asked for personal information, please do not respond');
     };
 };
