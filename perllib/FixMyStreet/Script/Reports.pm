@@ -68,11 +68,19 @@ sub construct_query {
     @noop_bodies = map { $_->id } @noop_bodies;
     push @noop_params, \[ "NOT regexp_split_to_array(bodies_str, ',') && ?", [ {} => \@noop_bodies ] ];
 
+    my @and = (
+        @noop_params,
+        {   -or => {
+                whensent       => undef,
+                send_fail_types => { '!=', undef },
+            }
+        },
+    );
+
     my $params = {
         state => $states,
-        whensent => undef,
         bodies_str => { '!=', undef },
-        -and => \@noop_params,
+        -and => \@and,
     };
     if (!$debug) {
         $params->{'-or'} = [

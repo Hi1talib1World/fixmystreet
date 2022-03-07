@@ -59,9 +59,8 @@ __PACKAGE__->add_columns(
   "created",
   {
     data_type     => "timestamp",
-    default_value => \"current_timestamp",
+    default_value => \"CURRENT_TIMESTAMP",
     is_nullable   => 0,
-    original      => { default_value => \"now()" },
   },
   "confirmed",
   { data_type => "timestamp", is_nullable => 1 },
@@ -78,9 +77,8 @@ __PACKAGE__->add_columns(
   "lastupdate",
   {
     data_type     => "timestamp",
-    default_value => \"current_timestamp",
+    default_value => \"CURRENT_TIMESTAMP",
     is_nullable   => 0,
-    original      => { default_value => \"now()" },
   },
   "whensent",
   { data_type => "timestamp", is_nullable => 1 },
@@ -114,6 +112,8 @@ __PACKAGE__->add_columns(
   { data_type => "text", is_nullable => 1 },
   "defect_type_id",
   { data_type => "integer", is_foreign_key => 1, is_nullable => 1 },
+  "send_fail_types",
+  { data_type => "text", is_nullable => 1 },
 );
 __PACKAGE__->set_primary_key("id");
 __PACKAGE__->has_many(
@@ -170,8 +170,8 @@ __PACKAGE__->has_many(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07035 @ 2019-04-25 12:06:39
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:hUXle+TtlkDkxkBrVa/u+g
+# Created by DBIx::Class::Schema::Loader v0.07035 @ 2022-03-07 19:12:11
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:2ypowaC65nGgo9+3+N502w
 
 # Add fake relationship to stored procedure table
 __PACKAGE__->has_one(
@@ -254,6 +254,8 @@ my $IM = eval {
     Image::Magick->import;
     1;
 };
+
+use constant SENDER_REGEX => qr/^.*::/;
 
 with 'FixMyStreet::Roles::Abuser',
      'FixMyStreet::Roles::Extra',
@@ -909,12 +911,65 @@ sub updates_sent_to_body {
 sub add_send_method {
     my $self = shift;
     my $sender = shift;
-    ($sender = ref $sender) =~ s/^.*:://;
+    $sender =~ s/${\SENDER_REGEX}//;
     if (my $send_method = $self->send_method_used) {
         $self->send_method_used("$send_method,$sender");
     } else {
         $self->send_method_used($sender);
     }
+}
+
+sub add_send_fail_type {
+    my $self   = shift;
+    my $sender = shift;
+
+    $sender =~ s/${\SENDER_REGEX}//;
+
+    if ( my $old_send_fail_types = $self->send_fail_types ) {
+        # If $old_send_fail_types already contains $sender,
+        # do nothing
+        $self->send_fail_types("$old_send_fail_types,$sender")
+            if $old_send_fail_types !~ /$sender/;
+    }
+    else {
+        $self->send_fail_types($sender);
+    }
+
+    # TODO Unit test this
+    # Need to remove fail_type upon success
+    # Need to make sure existing tests pass (why can't it find schema update?)
+    # Update whensent and send_fail_timestamp?
+}
+
+sub remove_send_fail_type {
+    my $self = shift;
+    my $sender = shift;
+
+    $sender =~ s/${\SENDER_REGEX}//;
+
+    my $old_send_fail_types = $self->send_fail_types;
+
+    if ( $old_send_fail_types eq $sender ) {
+        $self->send_fail_types(undef);
+    }
+    elsif ($old_send_fail_types =~ /$sender/) {
+        my %types = map {$_=> undef} split /,/, $old_send_fail_types;
+        delete $types{$sender};
+        $self->send_fail_types(join ',', keys %types);
+    }
+}
+
+sub has_given_send_fail_type {
+    my $self = shift;
+    my $sender = shift;
+
+    $sender =~ s/${\SENDER_REGEX}//;
+
+    warn "====\n\t" . $sender . "\n====";
+    warn "====\n\t" . $self->send_fail_types . "\n====";
+    warn "====\n\t" . $self->send_fail_types =~ /$sender/ . "\n====";
+
+    return $self->send_fail_types =~ /$sender/;
 }
 
 sub resend {

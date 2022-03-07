@@ -216,13 +216,40 @@ sub _send {
 
     # Multiply results together, so one success counts as a success.
     my $result = -1;
+    my $report = $self->report;
+    my @send_fail_types;
 
-    for my $sender ( keys %{$self->reporters} ) {
-        $self->log("Sending using " . $sender);
-        $sender = $self->reporters->{$sender};
+    warn "====\n\t" . 'Reporters:' . "\n====";
+    use Data::Dumper;
+    $Data::Dumper::Indent = 2;
+    $Data::Dumper::Maxdepth = 3;
+    $Data::Dumper::Sortkeys = 1;
+    warn Dumper $self->reporters;
+
+    for my $sender_key ( keys %{$self->reporters} ) {
+        # If a report has send_fail_types, we only want to attempt sending
+        # via those methods
+        if ($report->send_fail_types
+            && !$report->has_given_send_fail_type($sender_key)) {
+            next;
+        }
+
+        $self->log("Sending using " . $sender_key);
+        my $sender = $self->reporters->{$sender_key};
         my $res = $sender->send( $self->report, $self->h );
+
+        warn "====\n\t" . $res . "\n====";
+
         $result *= $res;
-        $self->report->add_send_method($sender) if !$res;
+
+        if ($res) {
+            push @send_fail_types, $sender_key;
+        }
+        else {
+            $self->report->add_send_method($sender_key);
+            $self->report->remove_send_fail_type($sender_key);
+        }
+
         if ( $self->manager ) {
             if ($sender->unconfirmed_data) {
                 foreach my $e (keys %{ $sender->unconfirmed_data } ) {
@@ -235,6 +262,8 @@ sub _send {
         }
     }
 
+    $self->report->add_send_fail_type($_) for @send_fail_types;
+warn "====\n\t" . $result . "\n====";
     return $result;
 }
 
