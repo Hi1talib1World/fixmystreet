@@ -67,6 +67,14 @@ fixmystreet.assets.add(tilma_defaults, {
     name: "Adopted Highways"
 });
 
+$(fixmystreet).on('report_new:highways_change', function() {
+    if (fixmystreet.body_overrides.get_only_send() === 'National Highways') {
+        $('#peterborough_dangerous_msg').hide();
+    } else {
+        $('#peterborough_dangerous_msg').show();
+    }
+});
+
 // This is required so that the found/not found actions are fired on category
 // select and pin move rather than just on asset select/not select.
 OpenLayers.Layer.PeterboroughVectorAsset = OpenLayers.Class(OpenLayers.Layer.VectorAsset, {
