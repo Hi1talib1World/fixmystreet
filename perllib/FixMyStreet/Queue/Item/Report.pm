@@ -217,37 +217,41 @@ sub _send {
     # Multiply results together, so one success counts as a success.
     my $result = -1;
     my $report = $self->report;
-    my @send_fail_types;
 
-    warn "====\n\t" . 'Reporters:' . "\n====";
-    use Data::Dumper;
-    $Data::Dumper::Indent = 2;
-    $Data::Dumper::Maxdepth = 3;
-    $Data::Dumper::Sortkeys = 1;
-    warn Dumper $self->reporters;
+    my @add_send_fail_body_ids;
+    my @remove_send_fail_body_ids;
 
-    for my $sender_key ( keys %{$self->reporters} ) {
-        # If a report has send_fail_types, we only want to attempt sending
-        # via those methods
-        if ($report->send_fail_types
-            && !$report->has_given_send_fail_type($sender_key)) {
+    for my $sender_key ( keys %{ $self->reporters } ) {
+        my $sender = $self->reporters->{$sender_key};
+
+        # Skip if no body ID.
+        # (Lack of body at this stage shouldn't actually be possible,
+        # presumably).
+        my $body_id;
+        $body_id = $sender->bodies->[0]->id
+            if $sender->bodies && $sender->bodies->[0];
+        next unless $body_id;
+
+        # If a report has send_fail_body_ids, we only want to attempt sending
+        # for those bodies. Assume success and skip otherwise.
+        if ( @{ $report->send_fail_body_ids }
+            && !$report->has_given_send_fail_body_id($body_id) )
+        {
+            $sender->success(1);
             next;
         }
 
         $self->log("Sending using " . $sender_key);
-        my $sender = $self->reporters->{$sender_key};
         my $res = $sender->send( $self->report, $self->h );
-
-        warn "====\n\t" . $res . "\n====";
 
         $result *= $res;
 
         if ($res) {
-            push @send_fail_types, $sender_key;
+            push @add_send_fail_body_ids, $body_id;
         }
         else {
             $self->report->add_send_method($sender_key);
-            $self->report->remove_send_fail_type($sender_key);
+            push @remove_send_fail_body_ids, $body_id;
         }
 
         if ( $self->manager ) {
@@ -262,8 +266,12 @@ sub _send {
         }
     }
 
-    $self->report->add_send_fail_type($_) for @send_fail_types;
-warn "====\n\t" . $result . "\n====";
+    $self->report->add_send_fail_body_ids(@add_send_fail_body_ids)
+        if @add_send_fail_body_ids;
+
+    $self->report->remove_send_fail_body_ids(@remove_send_fail_body_ids)
+        if @remove_send_fail_body_ids;
+
     return $result;
 }
 
@@ -279,6 +287,9 @@ sub _post_send {
     }
     if (@errors) {
         $self->report->update_send_failed( join( '|', @errors ) );
+    }
+    else {
+        $self->report->send_fail_reason(undef);
     }
 
     my $send_confirmation_email = $self->cobrand_handler->report_sent_confirmation_email($self->report);

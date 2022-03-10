@@ -72,7 +72,7 @@ sub construct_query {
         @noop_params,
         {   -or => {
                 whensent       => undef,
-                send_fail_types => { '!=', undef },
+                send_fail_body_ids => { '!=', '{}' },
             }
         },
     );
@@ -124,7 +124,10 @@ sub end_summary_failures {
     my $sending_errors = '';
     my $unsent = FixMyStreet::DB->resultset('Problem')->search( {
         state => [ FixMyStreet::DB::Result::Problem::open_states() ],
-        whensent => undef,
+        -or => {
+            whensent           => undef,
+            send_fail_body_ids => { '!=', '{}' },
+        },
         bodies_str => { '!=', undef },
         send_fail_count => { '>', 0 }
     },

@@ -112,8 +112,12 @@ __PACKAGE__->add_columns(
   { data_type => "text", is_nullable => 1 },
   "defect_type_id",
   { data_type => "integer", is_foreign_key => 1, is_nullable => 1 },
-  "send_fail_types",
-  { data_type => "text", is_nullable => 1 },
+  "send_fail_body_ids",
+  {
+    data_type     => "integer[]",
+    default_value => \"'{}'::integer[]",
+    is_nullable   => 0,
+  },
 );
 __PACKAGE__->set_primary_key("id");
 __PACKAGE__->has_many(
@@ -170,8 +174,8 @@ __PACKAGE__->has_many(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07035 @ 2022-03-07 19:12:11
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:2ypowaC65nGgo9+3+N502w
+# Created by DBIx::Class::Schema::Loader v0.07035 @ 2022-03-10 11:09:46
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:W+bK8MqpeFwkTj0Ze/tN0g
 
 # Add fake relationship to stored procedure table
 __PACKAGE__->has_one(
@@ -244,6 +248,7 @@ use Utils;
 use FixMyStreet::Map::FMS;
 use FixMyStreet::Template;
 use FixMyStreet::Template::SafeString;
+use List::Util qw/any uniq/;
 use LWP::Simple qw($ua);
 use RABX;
 use URI;
@@ -919,63 +924,37 @@ sub add_send_method {
     }
 }
 
-sub add_send_fail_type {
-    my $self   = shift;
-    my $sender = shift;
+sub add_send_fail_body_ids {
+    my $self    = shift;
+    my @new_ids = @_;
 
-    $sender =~ s/${\SENDER_REGEX}//;
-
-    if ( my $old_send_fail_types = $self->send_fail_types ) {
-        # If $old_send_fail_types already contains $sender,
-        # do nothing
-        $self->send_fail_types("$old_send_fail_types,$sender")
-            if $old_send_fail_types !~ /$sender/;
-    }
-    else {
-        $self->send_fail_types($sender);
-    }
-
-    # TODO Unit test this
-    # Need to remove fail_type upon success
-    # Need to make sure existing tests pass (why can't it find schema update?)
-    # Update whensent and send_fail_timestamp?
+    $self->send_fail_body_ids(
+        [ uniq( @new_ids, @{ $self->send_fail_body_ids } ) ] );
 }
 
-sub remove_send_fail_type {
-    my $self = shift;
-    my $sender = shift;
+sub remove_send_fail_body_ids {
+    my $self       = shift;
+    my @remove_ids = @_;
 
-    $sender =~ s/${\SENDER_REGEX}//;
+    my %existing_ids = map { $_ => 1 } @{ $self->send_fail_body_ids };
 
-    my $old_send_fail_types = $self->send_fail_types;
+    delete @existing_ids{@remove_ids};
 
-    if ( $old_send_fail_types eq $sender ) {
-        $self->send_fail_types(undef);
-    }
-    elsif ($old_send_fail_types =~ /$sender/) {
-        my %types = map {$_=> undef} split /,/, $old_send_fail_types;
-        delete $types{$sender};
-        $self->send_fail_types(join ',', keys %types);
-    }
+    $self->send_fail_body_ids( [ keys %existing_ids ] );
 }
 
-sub has_given_send_fail_type {
+sub has_given_send_fail_body_id {
     my $self = shift;
-    my $sender = shift;
+    my $id   = shift;
 
-    $sender =~ s/${\SENDER_REGEX}//;
-
-    warn "====\n\t" . $sender . "\n====";
-    warn "====\n\t" . $self->send_fail_types . "\n====";
-    warn "====\n\t" . $self->send_fail_types =~ /$sender/ . "\n====";
-
-    return $self->send_fail_types =~ /$sender/;
+    return any { $_ == $id } @{ $self->send_fail_body_ids };
 }
 
 sub resend {
     my $self = shift;
     $self->whensent(undef);
     $self->send_method_used(undef);
+    $self->send_fail_body_ids([]);
 }
 
 sub as_hashref {
