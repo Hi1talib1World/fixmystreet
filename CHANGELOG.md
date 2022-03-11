@@ -2,16 +2,29 @@
 
 * Unreleased
     - Front end improvements:
+        - Enable keyboard navigation of map. #3321
         - Highlight pin on sidebar focus as well as hover.
         - Map page pagination links now styled as links rather than buttons. #3727
         - Include username in inactive email.
+        - Update document title on client-side new report page transition.
     - Bugfixes:
         - Add ID attributes to change password form inputs.
         - Fix link deactivation for privacy policy link on privacy policy page. #3704
+        - Fix dashboard rows for categories with &s.
+        - Make calls from Geocoder files to https rather than http
+    - Accessibility improvements:
+        - The "skip map" link on /around now has new wording. #3794
+        - Improve visual contrast of pagination links. #3794
+        - Make map pan/zoom controls keyboard-accessible. #3751
+    - Admin improvements:
+        - Admin 'add user' form now always creates staff users
     - Development improvements:
         - Default make_css to `web/cobrands` rather than `web`.
         - Ability to pass custom arguments (eg: SSL config) to server when running via Docker
         - Allow bin/fetch start/end times to be fractional.
+        - Add an --exclude option to bin/fetch.
+        - Add an index on problem(external_id) to speed up bin/fetch --updates
+        - Upgrade Net::DNS and libwww to deal with IPv6 issues.
     - Open311 improvements:
         - Increase default timeout.
 
@@ -86,6 +99,8 @@
         - Allow throttling by user login attempts
     - Changes
         - Send contact form emails from do-not-reply address if sender's domain uses DMARC.
+    - New features:
+        - Roles can now have category restrictions like users.
 
 * v3.1 (16th November 2020)
     - Security:

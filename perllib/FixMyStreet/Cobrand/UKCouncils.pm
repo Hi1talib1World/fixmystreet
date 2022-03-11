@@ -63,7 +63,13 @@ sub cut_off_date { '' }
 sub problems_restriction {
     my ($self, $rs) = @_;
     return $rs if FixMyStreet->staging_flag('skip_checks');
-    $rs = $rs->to_body($self->body);
+
+    my $bodies = $self->body;
+    if ($self->can('problems_restriction_bodies')) {
+        $bodies = $self->problems_restriction_bodies;
+    }
+    $rs = $rs->to_body($bodies);
+
     if (my $date = $self->cut_off_date) {
         my $table = ref $rs eq 'FixMyStreet::DB::ResultSet::Nearby' ? 'problem' : 'me';
         $rs = $rs->search({
@@ -230,6 +236,12 @@ sub recent_photos {
     return $self->problems->recent_photos( $num, $lat, $lon, $dist );
 }
 
+sub area_ids_for_problems {
+    my ($self) = @_;
+
+    return $self->council_area_id;
+}
+
 # Returns true if the cobrand owns the problem.
 sub owns_problem {
     my ($self, $report) = @_;
@@ -243,7 +255,10 @@ sub owns_problem {
     }
     # Want to ignore the TfL body that covers London councils, and HE that is all England
     my %areas = map { %{$_->areas} } grep { $_->name !~ /TfL|National Highways/ } @bodies;
-    return $areas{$self->council_area_id} ? 1 : undef;
+
+    foreach my $area_id ($self->area_ids_for_problems) {
+        return 1 if $areas{$area_id};
+    }
 }
 
 # If the council is two-tier, or e.g. TfL reports,
@@ -348,6 +363,12 @@ sub munge_report_new_contacts {
         my $tfl = FixMyStreet::Cobrand->get_class_for_moniker( 'tfl' )->new({ c => $self->{c} });
         $tfl->munge_red_route_categories($contacts);
     }
+}
+
+sub munge_mixed_category_groups {
+    my ($self, $list) = @_;
+    my $nh = FixMyStreet::Cobrand::HighwaysEngland->new({ c => $self->{c} });
+    $nh->national_highways_cleaning_groups($list);
 }
 
 sub open311_extra_data {

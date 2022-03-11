@@ -323,7 +323,7 @@ priority’ must be ticked</span>
 
 - You can click and drag a pin at any time to change the report’s specified location.
 - When viewing a report on the ground, staff with the appropriate permissions may click
-‘set to my current location’. This will reset the co-ordinates of the issue to reflect a more accurate placement. 
+‘set to my current location’. This will reset the co-ordinates of the issue to reflect a more accurate placement.
 
 </div>
 
@@ -507,8 +507,7 @@ First create the basic user account by inputting a name and email address, plus 
 details desired. Once this is done and you have saved the input, you can edit the account to assign
 any roles or permissions required.
 
-You can use the same form to create a user account for a resident or a member of staff, so tick
-‘staff user’ if you wish to create an admin account.
+The 'Staff' checkbox cannot be unchecked; this guarantees a new user will be a staff user, and will be automatically assigned to the correct body.
 
 The new staff user can then log in via the normal method.
 
@@ -549,6 +548,10 @@ The Administrator can allocate one or more categories of report (e.g. Potholes o
 maintenance) to a staff user by editing the user and checking the relevant category boxes. The
 staff user, when logged in, will then only see reports within those categories. This is useful where a
 staff user only deals with reports of a specific type.
+
+Roles can also have categories associated with them. This works in the same way as assigning categories
+to a user. You can assign categories to a role by editing the role and checking the relevant category
+boxes. Users will then only be able to see categories relevant to their role.
 
 #### Removing staff status from accounts
 

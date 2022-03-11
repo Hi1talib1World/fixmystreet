@@ -94,8 +94,8 @@ sub display :PathPart('') :Chained('id') :Args(0) {
         my $okay = 1;
         my $contact = $c->stash->{problem}->contact;
         if ($contact && ($c->user->get_extra_metadata('assigned_categories_only') || $contact->get_extra_metadata('assigned_users_only'))) {
-            my $user_cats = $c->user->get_extra_metadata('categories') || [];
-            $okay = any { $contact->id eq $_ } @$user_cats;
+            my $user_cats = $c->user->categories || [];
+            $okay = any { $contact->category eq $_ } @$user_cats;
         }
         if ($okay) {
             $c->stash->{relevant_staff_user} = 1;
@@ -675,7 +675,7 @@ sub _nearby_json :Private {
     my $dist = $c->get_param('distance') || '';
     $dist = 1000 unless $dist =~ /^\d+$/;
     $dist = 1000 if $dist > 1000;
-    $params->{distance} = $dist / 1000;
+    $params->{distance} = $dist / 1000 unless $params->{distance};
 
     my $pin_size = $c->get_param('pin_size') || '';
     $pin_size = 'small' unless $pin_size =~ /^(mini|small|normal|big)$/;
@@ -759,6 +759,8 @@ sub stash_category_groups : Private {
             $a->[0] cmp $b->[0];
         } @list;
         @list = map { $_->[1] } @list;
+
+        $c->cobrand->call_hook(munge_mixed_category_groups => \@list);
         $c->stash->{category_groups} = \@list;
         return;
     }
@@ -776,6 +778,9 @@ sub stash_category_groups : Private {
     push @category_groups, { name => _('Other'), categories => $category_groups{_('Other')} } if ($category_groups{_('Other')});
     push @category_groups, { name => _('Multiple Groups'), categories => $category_groups{_('Multiple Groups')} } if ($category_groups{_('Multiple Groups')});
     unshift @category_groups, { name => _('No Group'), categories => $category_groups{_('No Group')} } if $category_groups{_('No Group')};
+
+    $c->cobrand->call_hook(munge_unmixed_category_groups => \@category_groups, $opts);
+
     $c->stash->{category_groups}  = \@category_groups;
 }
 

@@ -3,7 +3,7 @@ describe('new report form', function() {
   beforeEach(function() {
     cy.server();
     cy.route('/report/new/ajax*').as('report-ajax');
-    cy.route("**/peterborough.assets/2/*", 'fixture:peterborough_pcc.json').as('pcc');
+    cy.route("**/peterborough.assets/4/*", 'fixture:peterborough_pcc.json').as('pcc');
     cy.route("**/peterborough.assets/3/*", 'fixture:peterborough_non_pcc.json').as('non_pcc');
     cy.visit('http://peterborough.localhost:3001/');
     cy.contains('Peterborough');
@@ -18,10 +18,10 @@ describe('new report form', function() {
     cy.nextPageReporting();
     cy.get('#form_emergency').select('yes');
     cy.get('.js-post-category-messages:visible').should('contain', 'Please phone customer services to report this problem.');
-    cy.get('.js-reporting-page--next:visible').should('be.disabled');
+    cy.get('.js-reporting-page:visible .js-reporting-page--next').should('be.disabled');
     cy.get('#form_emergency').select('no');
     cy.get('.js-post-category-messages:visible').should('not.contain', 'Please phone customer services to report this problem.');
-    cy.get('.js-reporting-page--next:visible').should('not.be.disabled');
+    cy.get('.js-reporting-page:visible .js-reporting-page--next').should('not.be.disabled');
   });
 
   it('is hidden when private land option is yes', function() {
@@ -29,10 +29,10 @@ describe('new report form', function() {
     cy.nextPageReporting();
     cy.get('#form_private_land').select('yes');
     cy.get('.js-post-category-messages:visible').should('contain', 'The council do not have powers to address issues on private land.');
-    cy.get('.js-reporting-page--next:visible').should('be.disabled');
+    cy.get('.js-reporting-page:visible .js-reporting-page--next').should('be.disabled');
     cy.get('#form_private_land').select('no');
     cy.get('.js-post-category-messages:visible').should('not.contain', 'The council do not have powers to address issues on private land.');
-    cy.get('.js-reporting-page--next:visible').should('not.be.disabled');
+    cy.get('.js-reporting-page:visible .js-reporting-page--next').should('not.be.disabled');
   });
 
   it('flytipping category handles land types correctly', function() {
@@ -53,6 +53,7 @@ describe('new report form', function() {
     cy.visit('http://peterborough.localhost:3001/report/new?longitude=-0.241841&latitude=52.570792');
     cy.wait('@report-ajax');
     cy.pickCategory('General fly tipping');
+    cy.get('#map_sidebar').scrollTo('top');
     cy.get('#js-environment-message:visible');
   });
 
@@ -82,7 +83,7 @@ describe('National site tests', function() {
   it('flytipping category handles land types correctly on .com', function() {
     cy.server();
     cy.route('/report/new/ajax*').as('report-ajax');
-    cy.route("**/peterborough.assets/2/*", 'fixture:peterborough_pcc.json').as('pcc');
+    cy.route("**/peterborough.assets/4/*", 'fixture:peterborough_pcc.json').as('pcc');
     cy.route("**/peterborough.assets/3/*", 'fixture:peterborough_non_pcc.json').as('non_pcc');
     cy.visit('http://fixmystreet.localhost:3001/');
     cy.get('[name=pc]').type('PE1 1HF');

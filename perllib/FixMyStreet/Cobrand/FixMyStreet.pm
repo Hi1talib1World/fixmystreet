@@ -162,6 +162,24 @@ sub munge_report_new_contacts {
 
 }
 
+sub munge_unmixed_category_groups {
+    my ($self, $groups, $opts) = @_;
+    return unless $opts->{reporting};
+    my $bodies = $self->{c}->stash->{bodies};
+    my %bodies = map { $_->name => 1 } values %$bodies;
+    if ($bodies{"Buckinghamshire Council"}) {
+        my @category_groups = grep { $_->{name} ne 'Car park issue' } @$groups;
+        my ($car_park_group) = grep { $_->{name} eq 'Car park issue' } @$groups;
+        @$groups = (@category_groups, $car_park_group);
+    }
+}
+
+sub munge_mixed_category_groups {
+    my ($self, $list) = @_;
+    my $nh = FixMyStreet::Cobrand::HighwaysEngland->new({ c => $self->{c} });
+    $nh->national_highways_cleaning_groups($list);
+}
+
 sub munge_load_and_group_problems {
     my ($self, $where, $filter) = @_;
 
@@ -405,6 +423,19 @@ sub reopening_disallowed {
     my $c = $self->{c};
     return 1 if $problem->to_body_named("Merton") && $c->user_exists && (!$c->user->from_body || $c->user->from_body->name ne "Merton Council");
     return $self->next::method($problem);
+}
+
+# Make sure CPC areas are included in point lookups for new reports
+# This is so that parish bodies (e.g. in Buckinghamshire) are available
+# for reporting to on .com
+sub add_extra_area_types {
+    my ($self, $types) = @_;
+
+    my @types = (
+        @$types,
+        'CPC',
+    );
+    return \@types;
 }
 
 1;

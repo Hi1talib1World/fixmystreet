@@ -137,8 +137,14 @@ function isR2L() {
             settings.presets = [];
             settings.presets.push({
                 name: settings.allText,
-                all: true
             });
+
+            if ($select.data('all-options')) {
+                settings.presets[0].options = $select.data('all-options');
+            }
+            else {
+                settings.presets[0].all = true;
+            }
         }
 
         if ( $select.data('extra') && $select.data('extra-options') ) {
@@ -859,11 +865,6 @@ $.extend(fixmystreet.set_up, {
     $('.js-multiple').make_multi();
   },
 
-  mobile_ui_tweaks: function() {
-    //move 'skip this step' link on mobile
-    $('.mobile #skip-this-step').addClass('chevron').wrap('<li>').parent().appendTo('#key-tools');
-  },
-
   // Very similar function in front.js for front page
   on_mobile_nav_click: function() {
     var html = document.documentElement;
@@ -1486,6 +1487,7 @@ fixmystreet.fetch_reporting_data = function() {
             $('body').removeClass('with-notes');
             return;
         }
+        $('#side-form-error').hide();
         $('#side-form').show();
         var selected = fixmystreet.reporting.selectedCategory(),
             old_category_group = selected.group || $('#filter_group').val() || '',
@@ -1529,6 +1531,8 @@ fixmystreet.fetch_reporting_data = function() {
         $('#form_subcategory_row').html(data.subcategories);
         re_select(old_category_group, old_category);
         fixmystreet.reporting.topLevelPoke();
+
+        fixmystreet.set_up.fancybox_images(); // In case e.g. top_message has pulled in a fancybox
 
         if ( data.extra_name_info && !$('#form_fms_extra_title').length ) {
             // there might be a first name field on some cobrands
@@ -1652,6 +1656,7 @@ fixmystreet.display = {
     }
 
     fixmystreet.page = 'new';
+    document.title = translation_strings.reporting_a_problem;
 
     fixmystreet.update_report_a_problem_btn();
   },
@@ -1807,6 +1812,7 @@ fixmystreet.display = {
         $('body').removeClass('with-notes');
 
         fixmystreet.page = fixmystreet.original.page;
+        document.title = translation_strings.viewing_a_location;
         if ($('html').hasClass('mobile') && fixmystreet.page == 'around') {
             $('#mob_sub_map_links').remove();
             $('html').removeClass('map-page');

@@ -99,7 +99,7 @@ sub report_new : Path : Args(0) {
 
     # create a problem from the submitted details
     $c->stash->{template} = "report/new/fill_in_details.html";
-    $c->forward('setup_categories_and_bodies', [ { mix_in => 1 } ]);
+    $c->forward('setup_categories_and_bodies', [ { mix_in => 1, reporting => 1 } ]);
     $c->forward('setup_report_extra_fields');
     $c->forward('check_for_category', [ { with_group => 1 } ]);
     $c->forward('setup_report_extras');
@@ -141,7 +141,7 @@ sub report_new_ajax : Path('mobile') : Args(0) {
         return 1;
     }
 
-    $c->forward('setup_categories_and_bodies');
+    $c->forward('setup_categories_and_bodies', [ { reporting => 1 } ]);
     $c->forward('setup_report_extra_fields');
     $c->forward('check_for_category', []);
     $c->forward('process_report');
@@ -195,9 +195,9 @@ sub report_form_ajax : Path('ajax') : Args(0) {
     $c->stash->{native_app} = !$c->get_param('w');
     my $subcategories;
     if ($c->stash->{native_app}) {
-        $c->forward('setup_categories_and_bodies');
+        $c->forward('setup_categories_and_bodies', [ { reporting => 1 } ]);
     } else {
-        $c->forward('setup_categories_and_bodies', [ { mix_in => 1 } ]);
+        $c->forward('setup_categories_and_bodies', [ { mix_in => 1, reporting => 1 } ]);
         $subcategories = $c->render_fragment( 'report/new/subcategories.html');
     }
 
@@ -1139,7 +1139,7 @@ sub process_report : Private {
             } else {
                 my $contact_options = {};
                 $contact_options->{do_not_send} = [ $c->get_param_list('do_not_send', 1) ];
-                my $bodies = $c->forward('contacts_to_bodies', [ $report->category, $contact_options ]);
+                my $bodies = $c->forward('contacts_to_bodies', [ $report, $contact_options ]);
                 join(',', map { $_->id } @$bodies) || '-1';
             }
         };
@@ -1198,9 +1198,20 @@ sub process_report : Private {
 }
 
 sub contacts_to_bodies : Private {
-    my ($self, $c, $category, $options) = @_;
+    my ($self, $c, $report, $options) = @_;
 
+    my $category = $report->category;
     my @contacts = grep { $_->category eq $category } @{$c->stash->{contacts}};
+
+    # If there are multiple contacts for different bodies then the default
+    # behaviour is to send to all bodies. However if a contact has the
+    # "prefer_if_multiple" checkbox checked then only send reports to that contact.
+    # This is useful for e.g. routing reports to parishes when the parent council
+    # has a contact of the same name.
+    my @preferred_contacts = grep { $_->get_extra_metadata('prefer_if_multiple') } @contacts;
+    if (scalar @preferred_contacts) {
+        @contacts = @preferred_contacts;
+    }
 
     # check that the front end has not indicated that we should not send to a
     # body. This is usually because the asset code thinks it's not near enough
@@ -1221,6 +1232,9 @@ sub contacts_to_bodies : Private {
             @contacts = ($contacts[0]);
         }
     }
+
+    $c->cobrand->call_hook(munge_contacts_to_bodies => \@contacts, $report);
+
     [ map { $_->body } @contacts ];
 }
 

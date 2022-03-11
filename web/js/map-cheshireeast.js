@@ -1,20 +1,10 @@
 fixmystreet.maps.config = function() {
-    fixmystreet.controls = [
-        new OpenLayers.Control.Attribution(),
-        new OpenLayers.Control.ArgParserFMS(),
-        new OpenLayers.Control.Navigation(),
-        new OpenLayers.Control.PermalinkFMS('map'),
-        new OpenLayers.Control.PanZoomFMS({id: 'fms_pan_zoom' })
-    ];
-    /* Linking back to around from report page, keeping track of map moves */
-    if ( fixmystreet.page == 'report' ) {
-        fixmystreet.controls.push( new OpenLayers.Control.PermalinkFMS('key-tool-problems-nearby', '/around') );
-    }
-    fixmystreet.map_type = OpenLayers.Layer.CheshireEast;
+    fixmystreet.maps.controls.unshift( new OpenLayers.Control.AttributionFMS() );
 };
 
 OpenLayers.Layer.CheshireEast = OpenLayers.Class(OpenLayers.Layer.XYZ, {
     url: 'https://maps-cache.cheshiresharedservices.gov.uk/maps/?wmts/CE_OS_AllBasemaps_COLOUR/oscce_grid/${z}/${x}/${y}.jpeg&KEY=3a3f5c60eca1404ea114e6941c9d3895',
+    attribution: "© Crown Copyright and database right 2022. Ordnance Survey 100049045",
 
     initialize: function(name, options) {
         options = OpenLayers.Util.extend({

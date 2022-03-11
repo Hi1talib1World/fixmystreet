@@ -3279,6 +3279,15 @@ DISTRIBUTIONS
       Geography::NationalGrid::IE 1.2
     requirements:
       ExtUtils::MakeMaker 0
+  Getopt-Long-2.52
+    pathname: J/JV/JV/Getopt-Long-2.52.tar.gz
+    provides:
+      Getopt::Long 2.52
+      Getopt::Long::CallBack 2.52
+      Getopt::Long::Parser 2.52
+    requirements:
+      ExtUtils::MakeMaker 0
+      Pod::Usage 1.14
   Getopt-Long-Descriptive-0.105
     pathname: R/RJ/RJBS/Getopt-Long-Descriptive-0.105.tar.gz
     provides:
@@ -3685,24 +3694,27 @@ DISTRIBUTIONS
       HTTP::Date 0
       Module::Build::Tiny 0.035
       perl 5.008001
-  HTTP-Message-6.06
-    pathname: G/GA/GAAS/HTTP-Message-6.06.tar.gz
+  HTTP-Message-6.36
+    pathname: O/OA/OALDERS/HTTP-Message-6.36.tar.gz
     provides:
-      HTTP::Config 6.00
-      HTTP::Headers 6.05
-      HTTP::Headers::Auth 6.00
-      HTTP::Headers::ETag 6.00
-      HTTP::Headers::Util 6.03
-      HTTP::Message 6.06
-      HTTP::Request 6.00
-      HTTP::Request::Common 6.04
-      HTTP::Response 6.04
-      HTTP::Status 6.03
+      HTTP::Config 6.36
+      HTTP::Headers 6.36
+      HTTP::Headers::Auth 6.36
+      HTTP::Headers::ETag 6.36
+      HTTP::Headers::Util 6.36
+      HTTP::Message 6.36
+      HTTP::Request 6.36
+      HTTP::Request::Common 6.36
+      HTTP::Response 6.36
+      HTTP::Status 6.36
     requirements:
+      Carp 0
       Compress::Raw::Zlib 0
-      Encode 2.21
+      Encode 3.01
       Encode::Locale 1
+      Exporter 5.57
       ExtUtils::MakeMaker 0
+      File::Spec 0
       HTTP::Date 6
       IO::Compress::Bzip2 2.021
       IO::Compress::Deflate 0
@@ -3716,7 +3728,10 @@ DISTRIBUTIONS
       MIME::Base64 2.1
       MIME::QuotedPrint 0
       URI 1.10
+      base 0
       perl 5.008001
+      strict 0
+      warnings 0
   HTTP-MultiPartParser-0.02
     pathname: C/CH/CHANSEN/HTTP-MultiPartParser-0.02.tar.gz
     provides:
@@ -5396,87 +5411,130 @@ DISTRIBUTIONS
       sort 0
       strict 0
       warnings 0
-  Net-DNS-0.72
-    pathname: N/NL/NLNETLABS/Net-DNS-0.72.tar.gz
+  Net-DNS-1.33
+    pathname: N/NL/NLNETLABS/Net-DNS-1.33.tar.gz
     provides:
-      Net::DNS 0.72
-      Net::DNS::Domain 1096
-      Net::DNS::DomainName 1096
-      Net::DNS::DomainName1035 1096
-      Net::DNS::DomainName2535 1096
-      Net::DNS::Header 1086
-      Net::DNS::Mailbox 1096
-      Net::DNS::Mailbox1035 1096
-      Net::DNS::Mailbox2535 1096
-      Net::DNS::Nameserver 1096
-      Net::DNS::Packet 1086
-      Net::DNS::Parameters 1074
-      Net::DNS::Question 1074
-      Net::DNS::RR 1094
-      Net::DNS::RR::A 1096
-      Net::DNS::RR::AAAA 1096
-      Net::DNS::RR::AFSDB 1096
-      Net::DNS::RR::APL 1096
-      Net::DNS::RR::APL::Item 1096
-      Net::DNS::RR::CERT 1073
-      Net::DNS::RR::CNAME 1096
-      Net::DNS::RR::DHCID 1096
-      Net::DNS::RR::DNAME 1096
-      Net::DNS::RR::EID 1096
-      Net::DNS::RR::HINFO 1096
-      Net::DNS::RR::HIP 1096
-      Net::DNS::RR::IPSECKEY 1096
-      Net::DNS::RR::ISDN 1096
-      Net::DNS::RR::KX 1096
-      Net::DNS::RR::L32 1096
-      Net::DNS::RR::L64 1096
-      Net::DNS::RR::LOC 1075
-      Net::DNS::RR::LP 1096
-      Net::DNS::RR::MB 1096
-      Net::DNS::RR::MG 1096
-      Net::DNS::RR::MINFO 1096
-      Net::DNS::RR::MR 1096
-      Net::DNS::RR::MX 1096
-      Net::DNS::RR::NAPTR 1096
-      Net::DNS::RR::NID 1096
-      Net::DNS::RR::NIMLOC 1096
-      Net::DNS::RR::NS 1096
-      Net::DNS::RR::NSAP 1096
-      Net::DNS::RR::NULL 1096
-      Net::DNS::RR::OPT 1096
-      Net::DNS::RR::PTR 1096
-      Net::DNS::RR::PX 1096
-      Net::DNS::RR::RP 1096
-      Net::DNS::RR::RT 1096
-      Net::DNS::RR::SOA 1096
-      Net::DNS::RR::SPF 1096
-      Net::DNS::RR::SRV 1096
-      Net::DNS::RR::SSHFP 1096
-      Net::DNS::RR::TKEY 1096
-      Net::DNS::RR::TLSA 1096
-      Net::DNS::RR::TSIG 1090
-      Net::DNS::RR::TXT 1079
-      Net::DNS::RR::X25 1096
-      Net::DNS::Resolver 1088
-      Net::DNS::Resolver::Base 1094
-      Net::DNS::Resolver::MSWin32 1096
-      Net::DNS::Resolver::Recurse 1096
-      Net::DNS::Resolver::UNIX 1096
-      Net::DNS::Resolver::cygwin 1096
-      Net::DNS::Resolver::os2 1096
-      Net::DNS::Text 1079
-      Net::DNS::Update 1096
-      Net::DNS::ZoneFile 1094
-      Net::DNS::ZoneFile::Generator 1094
-      Net::DNS::ZoneFile::Text 1094
+      Net::DNS 1.33
+      Net::DNS::Domain 1855
+      Net::DNS::DomainName 1855
+      Net::DNS::DomainName1035 1855
+      Net::DNS::DomainName2535 1855
+      Net::DNS::Header 1855
+      Net::DNS::Mailbox 1855
+      Net::DNS::Mailbox1035 1855
+      Net::DNS::Mailbox2535 1855
+      Net::DNS::Nameserver 1860
+      Net::DNS::Packet 1855
+      Net::DNS::Parameters 1855
+      Net::DNS::Question 1855
+      Net::DNS::RR 1856
+      Net::DNS::RR::A 1857
+      Net::DNS::RR::AAAA 1857
+      Net::DNS::RR::AFSDB 1857
+      Net::DNS::RR::AMTRELAY 1855
+      Net::DNS::RR::APL 1857
+      Net::DNS::RR::APL::Item 1857
+      Net::DNS::RR::CAA 1857
+      Net::DNS::RR::CDNSKEY 1857
+      Net::DNS::RR::CDS 1857
+      Net::DNS::RR::CERT 1856
+      Net::DNS::RR::CNAME 1857
+      Net::DNS::RR::CSYNC 1857
+      Net::DNS::RR::DHCID 1857
+      Net::DNS::RR::DNAME 1857
+      Net::DNS::RR::DNSKEY 1856
+      Net::DNS::RR::DS 1856
+      Net::DNS::RR::EUI48 1857
+      Net::DNS::RR::EUI64 1857
+      Net::DNS::RR::GPOS 1857
+      Net::DNS::RR::HINFO 1857
+      Net::DNS::RR::HIP 1857
+      Net::DNS::RR::HTTPS 1857
+      Net::DNS::RR::IPSECKEY 1857
+      Net::DNS::RR::ISDN 1857
+      Net::DNS::RR::KEY 1857
+      Net::DNS::RR::KX 1857
+      Net::DNS::RR::L32 1857
+      Net::DNS::RR::L64 1857
+      Net::DNS::RR::LOC 1857
+      Net::DNS::RR::LP 1857
+      Net::DNS::RR::MB 1857
+      Net::DNS::RR::MG 1857
+      Net::DNS::RR::MINFO 1857
+      Net::DNS::RR::MR 1857
+      Net::DNS::RR::MX 1857
+      Net::DNS::RR::NAPTR 1857
+      Net::DNS::RR::NID 1857
+      Net::DNS::RR::NS 1857
+      Net::DNS::RR::NSEC 1857
+      Net::DNS::RR::NSEC3 1857
+      Net::DNS::RR::NSEC3PARAM 1857
+      Net::DNS::RR::NULL 1857
+      Net::DNS::RR::OPENPGPKEY 1857
+      Net::DNS::RR::OPT 1857
+      Net::DNS::RR::OPT::CHAIN 1857
+      Net::DNS::RR::OPT::CLIENT_SUBNET 1857
+      Net::DNS::RR::OPT::COOKIE 1857
+      Net::DNS::RR::OPT::DAU 1857
+      Net::DNS::RR::OPT::DHU 1857
+      Net::DNS::RR::OPT::EXPIRE 1857
+      Net::DNS::RR::OPT::EXTENDED_ERROR 1857
+      Net::DNS::RR::OPT::KEY_TAG 1857
+      Net::DNS::RR::OPT::N3U 1857
+      Net::DNS::RR::OPT::PADDING 1857
+      Net::DNS::RR::OPT::TCP_KEEPALIVE 1857
+      Net::DNS::RR::PTR 1857
+      Net::DNS::RR::PX 1857
+      Net::DNS::RR::RP 1857
+      Net::DNS::RR::RRSIG 1856
+      Net::DNS::RR::RT 1857
+      Net::DNS::RR::SIG 1856
+      Net::DNS::RR::SMIMEA 1857
+      Net::DNS::RR::SOA 1857
+      Net::DNS::RR::SPF 1857
+      Net::DNS::RR::SRV 1857
+      Net::DNS::RR::SSHFP 1857
+      Net::DNS::RR::SVCB 1857
+      Net::DNS::RR::TKEY 1857
+      Net::DNS::RR::TLSA 1857
+      Net::DNS::RR::TSIG 1856
+      Net::DNS::RR::TXT 1857
+      Net::DNS::RR::URI 1857
+      Net::DNS::RR::X25 1857
+      Net::DNS::RR::ZONEMD 1857
+      Net::DNS::Resolver 1855
+      Net::DNS::Resolver::Base 1855
+      Net::DNS::Resolver::MSWin32 1856
+      Net::DNS::Resolver::Recurse 1856
+      Net::DNS::Resolver::UNIX 1856
+      Net::DNS::Resolver::android 1856
+      Net::DNS::Resolver::cygwin 1856
+      Net::DNS::Resolver::os2 1856
+      Net::DNS::Resolver::os390 1856
+      Net::DNS::Text 1855
+      Net::DNS::Update 1855
+      Net::DNS::ZoneFile 1855
+      Net::DNS::ZoneFile::Generator 1855
+      Net::DNS::ZoneFile::Text 1855
     requirements:
-      Digest::HMAC_MD5 1
-      Digest::MD5 2.12
+      Carp 1.1
+      Digest::HMAC 1.03
+      Digest::MD5 2.13
       Digest::SHA 5.23
-      ExtUtils::MakeMaker 0
-      IO::Socket 0
-      MIME::Base64 2.11
-      Test::More 0.18
+      Encode 2.26
+      Exporter 5.56
+      ExtUtils::MakeMaker 6.66
+      File::Spec 0.86
+      Getopt::Long 2.43
+      IO::File 1.08
+      IO::Select 1.14
+      IO::Socket 1.26
+      IO::Socket::IP 0.38
+      MIME::Base64 2.13
+      PerlIO 1.05
+      Scalar::Util 1.25
+      Time::Local 1.19
+      perl 5.008008
   Net-Domain-TLD-1.75
     pathname: A/AL/ALEXP/Net-Domain-TLD-1.75.tar.gz
     provides:
@@ -5506,20 +5564,24 @@ DISTRIBUTIONS
       Test::TCP 0
       URI 0
       URI::Escape 0
-  Net-HTTP-6.06
-    pathname: G/GA/GAAS/Net-HTTP-6.06.tar.gz
+  Net-HTTP-6.22
+    pathname: O/OA/OALDERS/Net-HTTP-6.22.tar.gz
     provides:
-      Net::HTTP 6.06
-      Net::HTTP::Methods 6.06
-      Net::HTTP::NB 6.04
-      Net::HTTPS 6.04
+      Net::HTTP 6.22
+      Net::HTTP::Methods 6.22
+      Net::HTTP::NB 6.22
+      Net::HTTPS 6.22
     requirements:
+      Carp 0
       Compress::Raw::Zlib 0
       ExtUtils::MakeMaker 0
-      IO::Compress::Gzip 0
-      IO::Select 0
       IO::Socket::INET 0
+      IO::Uncompress::Gunzip 0
+      URI 0
+      base 0
       perl 5.006002
+      strict 0
+      warnings 0
   Net-OAuth-0.28
     pathname: K/KG/KGRENNAN/Net-OAuth-0.28.tar.gz
     provides:
@@ -8931,6 +8993,68 @@ DISTRIBUTIONS
       URI::Escape 0
       WWW::RobotRules 6
       perl 5.008001
+  libwww-perl-6.61
+    pathname: O/OA/OALDERS/libwww-perl-6.61.tar.gz
+    provides:
+      LWP 6.61
+      LWP::Authen::Basic 6.61
+      LWP::Authen::Digest 6.61
+      LWP::Authen::Ntlm 6.61
+      LWP::ConnCache 6.61
+      LWP::Debug 6.61
+      LWP::Debug::TraceHTTP 6.61
+      LWP::DebugFile 6.61
+      LWP::MemberMixin 6.61
+      LWP::Protocol 6.61
+      LWP::Protocol::cpan 6.61
+      LWP::Protocol::data 6.61
+      LWP::Protocol::file 6.61
+      LWP::Protocol::ftp 6.61
+      LWP::Protocol::gopher 6.61
+      LWP::Protocol::http 6.61
+      LWP::Protocol::loopback 6.61
+      LWP::Protocol::mailto 6.61
+      LWP::Protocol::nntp 6.61
+      LWP::Protocol::nogo 6.61
+      LWP::RobotUA 6.61
+      LWP::Simple 6.61
+      LWP::UserAgent 6.61
+      libwww::perl undef
+    requirements:
+      CPAN::Meta::Requirements 2.120620
+      Digest::MD5 0
+      Encode 2.12
+      Encode::Locale 0
+      ExtUtils::MakeMaker 0
+      File::Copy 0
+      File::Listing 6
+      File::Temp 0
+      Getopt::Long 0
+      HTML::Entities 0
+      HTML::HeadParser 0
+      HTTP::Cookies 6
+      HTTP::Date 6
+      HTTP::Negotiate 6
+      HTTP::Request 6
+      HTTP::Request::Common 6
+      HTTP::Response 6
+      HTTP::Status 6.07
+      IO::Select 0
+      IO::Socket 0
+      LWP::MediaTypes 6
+      MIME::Base64 2.1
+      Module::Metadata 0
+      Net::FTP 2.58
+      Net::HTTP 6.18
+      Scalar::Util 0
+      Try::Tiny 0
+      URI 1.10
+      URI::Escape 0
+      WWW::RobotRules 6
+      parent 0.217
+      perl 5.008001
+      strict 0
+      warnings 0
   local-lib-2.000024
     pathname: H/HA/HAARG/local-lib-2.000024.tar.gz
     provides:

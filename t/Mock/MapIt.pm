@@ -27,8 +27,8 @@ my @PLACES = (
     [ 'EH1 1BB', 55.952055, -3.189579, 2651, 'Edinburgh City Council', 'UTA', 20728, 'City Centre', 'UTE' ],
     [ 'BS10 5EE', 51.494885, -2.602237, 2561, 'Bristol City Council', 'UTA', 148646, 'Bedminster', 'UTW' ],
     [ 'BS20 5EE', 51.496194, -2.603439, 2608, 'Borsetshire County Council', 'CTY', 148646, 'Bedminster', 'UTW' ],
-    [ 'SL9 0NX', 51.615559, -0.556903, 2217, 'Buckinghamshire Council', 'CTY', 2257, 'Chiltern District Council', 'DIS', 2796, 'Chalfont Common', 'DIW', 143422, 'Chalfont St Peter', 'CED' ],
-    [ '?', 51.615499, -0.556667, 2217, 'Buckinghamshire Council', 'CTY', 2257, 'Chiltern District Council', 'DIS', 2796, 'Chalfont Common', 'DIW', 143422, 'Chalfont St Peter', 'CED' ],
+    [ 'SL9 0NX', 51.615559, -0.556903, 2217, 'Buckinghamshire Council', 'CTY', 2257, 'Chiltern District Council', 'DIS', 2796, 'Chalfont Common', 'DIW', 143422, 'Chalfont St Peter', 'CED', 53822, 'Adstock', 'CPC' ],
+    [ '?', 51.615499, -0.556667, 2217, 'Buckinghamshire Council', 'CTY', 2257, 'Chiltern District Council', 'DIS', 2796, 'Chalfont Common', 'DIW', 143422, 'Chalfont St Peter', 'CED', 53822, 'Adstock', 'CPC' ],
     [ '?', 51.615965, -0.556367, 2217, 'Buckinghamshire Council', 'CTY', 2257, 'Chiltern District Council', 'DIS', 2796, 'Chalfont Common', 'DIW', 143422, 'Chalfont St Peter', 'CED' ],
     [ '?', 51.615439, -0.558362, 2217, 'Buckinghamshire Council', 'CTY', 2257, 'Chiltern District Council', 'DIS', 2796, 'Chalfont Common', 'DIW', 143422, 'Chalfont St Peter', 'CED' ],
     [ 'HP19 8FF', 51.822364, -0.826409, 2217, 'Buckinghamshire Council', 'CTY', 2258, 'Aylesbury Vale District Council', 'DIS', 144545, 'Gatehouse', 'DIW', 143444, 'Aylesbury North-West', 'CED' ],
@@ -78,9 +78,13 @@ my @PLACES = (
     [ '?', 51.379009, -2.359276, 2551, 'Bath and North East Somerset Council', 'UTA' ],
     [ 'The Circus', 51.386269, -2.364050, 2551, 'Bath and North East Somerset Council', 'UTA' ],
     [ 'SM4 5DX', 51.400975, -0.19655, 2500, 'Merton Council', 'LBO' ],
+    [ 'SY4 5DL', 52.855684, -2.723877, 2238, 'Shropshire Council', 'UTA' ],
     # Norway
     [ '3290', 59, 10, 709, 'Larvik', 'NKO', 7, 'Vestfold', 'NFY' ],
     [ '0045', "59.9", "10.9", 301, 'Oslo', 'NKO', 3, 'Oslo', 'NFY' ],
+    ['?', 51.015143, -0.912160, 2227, 'Hampshire County Council', 'CTY'],
+    ['?', 51.020097, -0.926065, 2227, 'Hampshire County Council', 'CTY'],
+
 );
 
 sub dispatch_request {

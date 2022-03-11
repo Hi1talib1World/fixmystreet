@@ -247,6 +247,7 @@ FixMyStreet::override_config {
         my $email = $mech->get_email;
         my $body = $mech->get_text_body_from_email($email);
         like $body, qr/Investigation complete/, 'state correct in email';
+        like $body, qr/fix every issue reported on FixMyStreet/;
     };
 
     subtest 'extra CSV columns are present' => sub {
@@ -324,10 +325,13 @@ FixMyStreet::override_config {
     }
 
     subtest 'extra data sent with defect update' => sub {
+        my $wh = $mech->create_body_ok(2417, 'Vale of White Horse');
         my $comment = FixMyStreet::DB->resultset('Comment')->first;
+        $mech->create_contact_ok(body_id => $wh->id, category => $comment->problem->category, email => 'whemail@example.org');
         $comment->set_extra_metadata(defect_raised => 1);
         $comment->update;
         $comment->problem->external_id('hey');
+        $comment->problem->bodies_str($wh->id . ',' . $comment->problem->bodies_str);
         $comment->problem->set_extra_metadata(defect_location_description => 'Location');
         $comment->problem->set_extra_metadata(defect_item_category => 'Kerbing');
         $comment->problem->set_extra_metadata(defect_item_type => 'Damaged');
@@ -360,6 +364,7 @@ FixMyStreet::override_config {
         is $cgi->param('attribute[raise_defect]'), 1, 'Defect flag sent with update';
         is $cgi->param('attribute[defect_item_category]'), 'Kerbing';
         is $cgi->param('attribute[extra_details]'), $user2->email . ' TM1 Damaged 100x100';
+        is $cgi->param('service_code'), $comment->problem->category;
 
         # Now set a USRN on the problem (found at submission)
         $comment->problem->push_extra_fields({ name => 'usrn', value => '12345' });
@@ -369,6 +374,21 @@ FixMyStreet::override_config {
         $cgi = CGI::Simple->new($o->test_req_used->content);
         is $cgi->param('attribute[usrn]'), 12345, 'USRN sent with update';
         is $cgi->param('attribute[raise_defect]'), 1, 'Defect flag sent with update';
+    };
+
+    subtest 'street lighting duplicates' => sub {
+        my $latitude = 51.784721;
+        my $longitude = -1.494453;
+        $mech->create_contact_ok( body_id => $oxon->id, category => 'Lamp out', email => 'streetlighting', group => 'Street Lighting' );
+        $mech->create_contact_ok( body_id => $oxon->id, category => 'Lamp on all day', email => 'streetlighting', group => 'Street Lighting' );
+        $mech->create_contact_ok( body_id => $oxon->id, category => 'Lamp leaning', email => 'streetlighting', group => 'Street Lighting' );
+        my @params = (1, $oxon->id, 'Other light', { latitude => $latitude, longitude => $longitude, category => 'Lamp on all day' });
+        $mech->create_problems_for_body(@params);
+        $params[3]{category} = 'Lamp leaning';
+        $mech->create_problems_for_body(@params);
+        my $json = $mech->get_ok_json("/around/nearby?latitude=$latitude&longitude=$longitude&filter_category=Lamp+out");
+        my $pins = $json->{pins};
+        is scalar @$pins, 2, 'other street lighting pins included';
     };
 
 };

@@ -34,7 +34,8 @@ fixmystreet.password_minimum_length = [% c.cobrand.password_minimum_length %];
             short: '[% tprintf(loc('Please make sure your password is at least %d characters long', "JS"), c.cobrand.password_minimum_length) %]',
         },
         phone: {
-            required: '[% loc('Please enter your phone number', "JS") %]'
+            required: '[% loc('Please enter your phone number', "JS") %]',
+            ukFormat: '[% loc('Please enter a valid UK phone number', "JS") %]'
         },
         fms_extra_title: '[% loc('Please enter your title', "JS") %]',
         first_name: '[% loc('Please enter your first name', "JS") %]',
@@ -57,6 +58,7 @@ fixmystreet.password_minimum_length = [% c.cobrand.password_minimum_length %];
 
         correct_position: '[% loc('Right place?', "JS") %]',
 
+        viewing_a_location: '[% loc('Viewing a location', "JS") %]',
         reporting_a_problem: '[% loc('Reporting a problem', "JS") %]',
         ok: '[% loc('Continue', "JS") %]',
 

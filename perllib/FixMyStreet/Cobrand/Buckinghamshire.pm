@@ -11,6 +11,11 @@ with 'FixMyStreet::Roles::ConfirmValidation';
 with 'FixMyStreet::Roles::BoroughEmails';
 use SUPER;
 
+
+use LWP::Simple;
+use URI;
+use Try::Tiny;
+
 sub council_area_id { return 2217; }
 sub council_area { return 'Buckinghamshire'; }
 sub council_name { return 'Buckinghamshire Council'; }
@@ -29,6 +34,16 @@ sub disambiguate_location {
         span   => '0.596065946222112,0.664092167105497',
         bounds => [ 51.4854160129405, -1.1406945585036, 52.0814819591626, -0.476602391398098 ],
     };
+}
+
+sub geocoder_munge_results {
+    my ($self, $result) = @_;
+
+    if ($result->{display_name} =~ /Stoke Road, Stoke Poges/) {
+        # Tweak the location of this one particular result to be on the correct
+        # side of the Slough/Bucks boundary
+        $result->{lat} = "51.523";
+    }
 }
 
 sub on_map_default_status { ('open', 'fixed') }
@@ -172,13 +187,16 @@ sub dashboard_export_problems_add_columns {
     shift->_dashboard_export_add_columns(@_);
 }
 
-# Enable adding/editing of parish councils in the admin
-sub add_extra_areas {
-    my ($self, $areas) = @_;
+sub dashboard_extra_bodies {
+    my ($self) = @_;
 
+    return $self->parish_bodies->all;
+}
+
+sub _parish_ids {
     # This is a list of all Parish Councils within Buckinghamshire,
     # taken from https://mapit.mysociety.org/area/2217/covers.json?type=CPC
-    my $parish_ids = [
+    return [
         "135493",
         "135494",
         "148713",
@@ -349,7 +367,13 @@ sub add_extra_areas {
         "63715",
         "63723"
     ];
-    my $ids_string = join ",", @{ $parish_ids };
+}
+
+# Enable adding/editing of parish councils in the admin
+sub add_extra_areas {
+    my ($self, $areas) = @_;
+
+    my $ids_string = join ",", @{ $self->_parish_ids };
 
     my $extra_areas = mySociety::MaPit::call('areas', [ $ids_string ]);
 
@@ -581,6 +605,159 @@ sub council_rss_alert_options {
     }
 
     return ($options);
+}
+
+sub car_park_wfs_query {
+    my ($self, $row) = @_;
+
+    my ($x, $y) = $row->local_coords;
+    my $buffer = 50; # metres
+    my ($w, $s, $e, $n) = ($x-$buffer, $y-$buffer, $x+$buffer, $y+$buffer);
+
+    my $filter = "
+    <ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">
+        <ogc:BBOX>
+            <ogc:PropertyName>Shape</ogc:PropertyName>
+            <gml:Envelope xmlns:gml='http://www.opengis.net/gml' srsName='EPSG:27700'>
+                <gml:lowerCorner>$w $s</gml:lowerCorner>
+                <gml:upperCorner>$e $n</gml:upperCorner>
+            </gml:Envelope>
+        </ogc:BBOX>
+    </ogc:Filter>";
+    $filter =~ s/\n\s+//g;
+
+    my $uri = URI->new("https://maps.buckscc.gov.uk/arcgis/services/Transport/BC_Car_Parks/MapServer/WFSServer");
+    $uri->query_form(
+        REQUEST => "GetFeature",
+        SERVICE => "WFS",
+        SRSNAME => "urn:ogc:def:crs:EPSG::27700",
+        TYPENAME => "BC_CAR_PARKS",
+        VERSION => "1.1.0",
+        propertyName => 'OBJECTID,Shape',
+    );
+
+    # URI encodes ' ' as '+' but arcgis wants it to be '%20'
+    # Putting %20 into the filter string doesn't work because URI then escapes
+    # the '%' as '%25' so you get a double encoding issue.
+    #
+    # Avoid all of that and just put the filter on the end of the $uri
+    $filter = URI::Escape::uri_escape_utf8($filter);
+    $uri = "$uri&filter=$filter";
+
+    try {
+        return $self->_get($uri);
+    } catch {
+        # Ignore WFS errors.
+        return {};
+    };
+}
+
+# Wrapper around LWP::Simple::get to make mocking in tests easier.
+sub _get {
+    my ($self, $uri) = @_;
+
+    get($uri);
+}
+
+around 'report_validation' => sub {
+    my ($orig, $self, $report, $errors) = @_;
+
+    my $contact = FixMyStreet::DB->resultset('Contact')->find({
+        body_id => $self->body->id,
+        category => $report->category,
+    });
+
+    # Reports to parishes are considered "owned" by Bucks, but this method only searches for
+    # contacts owned by the Bucks body, so just call the original method if contact isn't found.
+    return $self->$orig($report, $errors) unless $contact;
+
+    my %groups = map { $_ => 1 } @{ $contact->groups };
+    return $self->$orig($report, $errors) unless $groups{'Car park issue'};
+
+    my $car_parks = $self->car_park_wfs_query($report);
+
+    if (index($car_parks, '<gml:featureMember>') == -1) {
+        # Car park not found
+        $errors->{category} = 'Please select a location in a Buckinghamshire maintained car park';
+    }
+
+    return $self->$orig($report, $errors);
+};
+
+# Route grass cutting reports to the parish if the user answers 'no' to the
+# question 'Is the speed limit on this road 30mph or greater?'
+sub munge_contacts_to_bodies {
+    my ($self, $contacts, $report) = @_;
+
+    return unless $report->category eq 'Grass cutting';
+
+    my $greater_than_30 = $report->get_extra_field_value('speed_limit_greater_than_30');
+    return unless $greater_than_30;
+
+    if ($greater_than_30 eq 'no') {
+        # Route to the parish
+        @$contacts = grep { !$_->body->areas->{$self->council_area_id} } @$contacts;
+    } else {
+        # Route to council
+        @$contacts = grep { $_->body->areas->{$self->council_area_id} } @$contacts;
+    }
+}
+
+sub area_ids_for_problems {
+    my ($self) = @_;
+
+    return ($self->council_area_id, @{$self->_parish_ids});
+}
+
+sub parish_bodies {
+    my ($self) = @_;
+
+    return FixMyStreet::DB->resultset('Body')->search(
+        { 'body_areas.area_id' => { -in => $self->_parish_ids } },
+        { join => 'body_areas', order_by => 'name' }
+    )->active;
+}
+
+# Show parish problems on the cobrand.
+sub problems_restriction_bodies {
+    my ($self) = @_;
+
+    my @parishes = $self->parish_bodies->all;
+    my @parish_ids = map { $_->id } @parishes;
+
+    return [$self->body->id, @parish_ids];
+}
+
+# Redirect to .com if not Bucks or a parish
+sub reports_body_check {
+    my ( $self, $c, $code ) = @_;
+
+    my @parishes = $self->parish_bodies->all;
+    my @bodies = ($self->body, @parishes);
+    my $matched = 0;
+    foreach my $body (@bodies) {
+        if ( $body->name =~ /^\Q$code\E/ ) {
+            $matched = 1;
+            last;
+        }
+    }
+
+    if (!$matched) {
+        $c->res->redirect( 'https://www.fixmystreet.com' . $c->req->uri->path_query, 301 );
+        $c->detach();
+    }
+
+    return;
+}
+
+sub about_hook {
+    my ($self) = @_;
+
+    my $c = $self->{c};
+    if ($c->stash->{template} eq 'about/parishes.html') {
+        my @parishes = $self->parish_bodies->all;
+        $c->stash->{parishes} = \@parishes;
+    }
 }
 
 1;

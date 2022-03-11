@@ -64,33 +64,7 @@ FixMyStreet::override_config {
         send_reports => 1,
     },
 }, sub {
-    my $b = Test::MockModule->new('Integrations::Bartec');
-    $b->mock('Authenticate', sub {
-        { Token => { TokenString => "TOKEN" } }
-    });
-    $b->mock('Jobs_Get', sub { [
-        { WorkPack => { Name => 'Waste-R1-010821' }, Name => 'Empty Bin 240L Black', ScheduledDate => '2021-08-01T07:00:00' },
-        { WorkPack => { Name => 'Waste-R1-050821' }, Name => 'Empty Bin Recycling 240l', ScheduledDate => '2021-08-05T07:00:00' },
-    ] });
-    my $jobs_fsd_get = [
-        { JobID => 123, PreviousDate => '2021-08-01T11:11:11Z', NextDate => '2021-08-08T11:11:11Z', JobName => 'Empty Bin 240L Black' },
-        { JobID => 456, PreviousDate => '2021-08-05T10:10:10Z', NextDate => '2021-08-19T10:10:10Z', JobName => 'Empty Bin Recycling 240l' },
-    ];
-    $b->mock('Jobs_FeatureScheduleDates_Get', sub { $jobs_fsd_get });
-    $b->mock('Features_Schedules_Get', sub { [
-        { JobName => 'Empty Bin 240L Black', Feature => { FeatureType => { ID => 6533 } }, Frequency => 'Every two weeks' },
-        { JobName => 'Empty Bin Recycling 240l', Feature => { FeatureType => { ID => 6534 } } },
-    ] });
-    $b->mock('ServiceRequests_Get', sub { [
-        # No open requests at present
-    ] });
-    $b->mock('Premises_Attributes_Get', sub { [] });
-    $b->mock('Premises_Events_Get', sub { [
-        # No open events at present
-    ] });
-    $b->mock('Streets_Events_Get', sub { [
-        # No open events at present
-    ] });
+    my ($b, $jobs_fsd_get) = shared_bartec_mocks();
     subtest 'Missing address lookup' => sub {
         $mech->get_ok('/waste');
         $mech->submit_form_ok({ with_fields => { postcode => 'PE1 3NA' } });
@@ -118,6 +92,7 @@ FixMyStreet::override_config {
         set_fixed_time('2021-08-05T14:00:00Z');
         $mech->get_ok('/waste/PE1%203NA:100090215480');
         $mech->content_contains('to report a missed recycling bin please call');
+        $mech->content_lacks('Report a missed collection');
 
         $mech->log_in_ok($staff->email);
         $mech->get_ok('/waste/PE1%203NA:100090215480');
@@ -182,6 +157,41 @@ FixMyStreet::override_config {
 
         $b->mock('Streets_Events_Get', sub { [] }); # reset
     };
+    subtest 'Check multiple schedules' => sub {
+        my $alt_jobs_fsd_get = {
+            Jobs_FeatureScheduleDates => [
+                { JobID => 454, PreviousDate => '2021-08-03T10:10:10Z', NextDate => '2021-08-12T10:10:10Z', JobName => 'Empty Bin 240L Black' },
+                { JobID => 455, PreviousDate => '2021-07-21T10:10:10Z', NextDate => '1900-01-01T00:00:00Z', JobName => 'Empty Bin 240L Black' },
+                { JobID => 456, PreviousDate => '1900-01-01T00:00:00Z', NextDate => '2021-08-19T10:10:10Z', JobName => 'Empty Bin Recycling 240l' },
+                { JobID => 457, PreviousDate => '2021-08-02T10:10:10Z', NextDate => '1900-01-01T00:00:00Z', JobName => 'Empty Bin Recycling 240l' },
+            ],
+        };
+        $b->unmock('Jobs_FeatureScheduleDates_Get');
+        $b->mock('call', sub {
+            if ($_[1] eq 'Jobs_FeatureScheduleDates_Get') {
+                return $alt_jobs_fsd_get;
+            }
+            return $b->original('call')->(@_);
+        });
+        $mech->get_ok('/waste/PE1%203NA:100090215480');
+        $mech->content_contains('Monday, 2nd August 2021');
+        $mech->content_contains('Thursday, 19th August 2021');
+        $b->unmock('call');
+        $b->mock('Jobs_FeatureScheduleDates_Get', sub { $jobs_fsd_get });
+    };
+    subtest 'Check no next schedule' => sub {
+        my $alt_jobs_fsd_get = [
+            { JobID => 454, PreviousDate => '2021-08-03T10:10:10Z', NextDate => undef, JobName => 'Empty Bin 240L Black' },
+        ];
+        $b->mock('Jobs_FeatureScheduleDates_Get', sub { $alt_jobs_fsd_get });
+        $mech->get_ok('/waste/PE1%203NA:100090215480');
+        $b->mock('Jobs_FeatureScheduleDates_Get', sub { $jobs_fsd_get });
+    };
+    subtest 'No planned services or clinical collection' => sub {
+        $mech->get_ok('/waste/PE1 3NA:100090215480');
+        $mech->content_lacks('Clinical');
+        $mech->content_lacks('Brown');
+    };
     subtest 'Future collection calendar' => sub {
         $mech->get_ok('/waste/PE1 3NA:100090215480/calendar.ics');
         $mech->content_contains('DTSTART;VALUE=DATE:20210808');
@@ -199,16 +209,46 @@ FixMyStreet::override_config {
         $mech->content_contains('A new recycling bin request has been made');
         $mech->content_contains('Report a recycling bin collection as missed');
         $b->mock('ServiceRequests_Get', sub { [
-            { ServiceType => { ID => 488 }, ServiceStatus => { Status => "OPEN" } },
+            { ServiceType => { ID => 254 }, ServiceStatus => { Status => "OPEN" } },
         ] });
         $mech->get_ok('/waste/PE1 3NA:100090215480');
         $mech->content_contains('A recycling bin collection has been reported as missed');
         $mech->content_contains('Request a new recycling bin');
         $b->mock('ServiceRequests_Get', sub { [
+            { ServiceType => { ID => 422 }, ServiceStatus => { Status => "OPEN" } },
+        ] });
+        $mech->get_ok('/waste/PE1 3NA:100090215480');
+        $mech->content_contains('A new black bin request has been made');
+        $mech->content_lacks('Report a problem with a black bin');
+        $b->mock('ServiceRequests_Get', sub { [
             { ServiceType => { ID => 492 }, ServiceStatus => { Status => "OPEN" } },
         ] });
         $mech->get_ok('/waste/PE1 3NA:100090215480');
         $mech->content_contains('A recycling bin collection has been reported as missed');
+        $b->mock('ServiceRequests_Get', sub { [
+            { ServiceType => { ID => 424 }, ServiceStatus => { Status => "OPEN" } },
+        ] });
+        $mech->get_ok('/waste/PE1 3NA:100090215480/request');
+        $mech->content_lacks('Large food caddy');
+        $mech->content_lacks('All bins');
+        $b->mock('ServiceRequests_Get', sub { [
+            { ServiceType => { ID => 493 }, ServiceStatus => { Status => "OPEN" } },
+        ] });
+        $mech->get_ok('/waste/PE1 3NA:100090215480/request');
+        $mech->content_lacks('Large food caddy');
+        $mech->content_lacks('Small food caddy');
+        $mech->content_lacks('All bins');
+        $b->mock('ServiceRequests_Get', sub { [
+            { ServiceType => { ID => 425 }, ServiceStatus => { Status => "OPEN" } },
+        ] });
+        $mech->get_ok('/waste/PE1 3NA:100090215480');
+        $mech->content_lacks('Request a new bin');
+        $mech->get_ok('/waste/PE1 3NA:100090215480/request');
+        $mech->content_lacks('240L Green');
+        $mech->content_lacks('240L Black');
+        $mech->content_lacks('Large food caddy');
+        $mech->content_lacks('Small food caddy');
+        $mech->content_lacks('All bins');
         $b->mock('ServiceRequests_Get', sub { [ ] }); # reset
     };
     subtest 'Request a new bin' => sub {
@@ -352,6 +392,14 @@ FixMyStreet::override_config {
         is $report->detail, "1 Pope Way, Peterborough, PE1 3NA";
         is $report->title, 'Report missed Food bins';
     };
+    subtest 'No missed food bin report if open request' => sub {
+        $b->mock('ServiceRequests_Get', sub { [
+            { ServiceType => { ID => 252 }, ServiceStatus => { Status => "OPEN" } },
+        ] });
+        $mech->get_ok('/waste/PE1 3NA:100090215480/report');
+        $mech->content_lacks('service-FOOD_BINS');
+        $b->mock('ServiceRequests_Get', sub { [] }); # reset
+    };
     subtest 'Report assisted collection' => sub {
         $b->mock('Premises_Attributes_Get', sub { [
             { AttributeDefinition => { Name => 'ASSISTED COLLECTION' } },
@@ -368,10 +416,22 @@ FixMyStreet::override_config {
     };
     subtest 'Report broken bin, already reported' => sub {
         $b->mock('ServiceRequests_Get', sub { [
+            { ServiceType => { ID => 419 }, ServiceStatus => { Status => "OPEN" } },
+        ] });
+        $mech->get_ok('/waste/PE1 3NA:100090215480/problem');
+        $mech->content_like(qr/name="service-419" value="1"\s+disabled/);
+        $mech->content_like(qr/name="service-538" value="1"\s+disabled/);
+        $mech->content_like(qr/name="service-541" value="1"\s+disabled/);
+        $b->mock('ServiceRequests_Get', sub { [
             { ServiceType => { ID => 538 }, ServiceStatus => { Status => "OPEN" } },
         ] });
         $mech->get_ok('/waste/PE1 3NA:100090215480/problem');
         $mech->content_like(qr/name="service-538" value="1"\s+disabled/);
+        $b->mock('ServiceRequests_Get', sub { [
+            { ServiceType => { ID => 497 }, ServiceStatus => { Status => "OPEN" } },
+        ] });
+        $mech->get_ok('/waste/PE1 3NA:100090215480/problem');
+        $mech->content_like(qr/name="service-497" value="1"\s+disabled/);
         $b->mock('ServiceRequests_Get', sub { [] }); # reset
     };
     subtest 'Report broken bin' => sub {
@@ -498,6 +558,55 @@ FixMyStreet::override_config {
 
 FixMyStreet::override_config {
     ALLOWED_COBRANDS => 'peterborough',
+    MAPIT_URL => 'http://mapit.uk/',
+    COBRAND_FEATURES => { bartec => { peterborough => {
+        url => 'http://example.org/',
+        auth_url => 'http://auth.example.org/',
+        sample_data => 1 } },
+        waste => { peterborough => 1 },
+        waste_features => {
+            peterborough => {
+                max_requests_per_day   => 3,
+                max_properties_per_day => 1,
+            },
+        },
+    },
+    STAGING_FLAGS => {
+        send_reports => 1,
+    },
+}, sub {
+    my ($b) = shared_bartec_mocks();
+
+    subtest 'test waste max-per-day' => sub {
+        SKIP: {
+            # MEMCACHED_HOST needs to be set to 'memcached.svc' in
+            # general.yml-example (or whatever config file you are using)
+            skip( "No memcached", 7 )
+                unless Memcached::set( 'waste-prop-test', 1 );
+            Memcached::delete("waste-prop-test");
+            Memcached::delete("waste-req-test");
+            $mech->get_ok('/waste/PE1 3NA:100090215480');
+            $mech->get_ok('/waste/PE1 3NA:100090215480');
+            $mech->get('/waste/PE1 3NA:100090215489');
+            is $mech->res->code, 403,
+                'Should be forbidden due to property limit';
+            $mech->content_contains('limited the number');
+            $mech->get('/waste/PE1 3NA:100090215480');
+            is $mech->res->code, 403,
+                'Should be forbidden due to overall view limit';
+            $mech->log_in_ok('staff@example.net');
+            $mech->get_ok(
+                '/waste/PE1 3NA:100090215480',
+                'Staff user shouldn\'t be limited'
+            );
+
+            $mech->log_out_ok;
+        }
+    };
+};
+
+FixMyStreet::override_config {
+    ALLOWED_COBRANDS => 'peterborough',
     COBRAND_FEATURES => {
         bartec => { peterborough => {
             sample_data => 1,
@@ -518,5 +627,41 @@ FixMyStreet::override_config {
         $mech->content_contains('1 Pope Way');
     };
 };
+
+sub shared_bartec_mocks {
+        my $b = Test::MockModule->new('Integrations::Bartec');
+    $b->mock('Authenticate', sub {
+        { Token => { TokenString => "TOKEN" } }
+    });
+    $b->mock('Jobs_Get', sub { [
+        { WorkPack => { Name => 'Waste-R1-010821' }, Name => 'Empty Bin 240L Black', ScheduledStart => '2021-08-01T07:00:00' },
+        { WorkPack => { Name => 'Waste-R1-050821' }, Name => 'Empty Bin Recycling 240l', ScheduledStart => '2021-08-05T07:00:00' },
+    ] });
+    my $jobs_fsd_get = [
+        { JobID => 123, PreviousDate => '2021-08-01T11:11:11Z', NextDate => '2021-08-08T11:11:11Z', JobName => 'Empty Bin 240L Black' },
+        { JobID => 456, PreviousDate => '2021-08-05T10:10:10Z', NextDate => '2021-08-19T10:10:10Z', JobName => 'Empty Bin Recycling 240l' },
+        { JobID => 789, PreviousDate => '2021-08-06T10:10:10Z', JobName => 'Empty Brown Bin' },
+        { JobID => 890, NextDate => '2022-08-06T10:10:10Z', JobName => 'Empty Clinical Waste' },
+    ];
+    $b->mock('Jobs_FeatureScheduleDates_Get', sub { $jobs_fsd_get });
+    $b->mock('Features_Schedules_Get', sub { [
+        { JobName => 'Empty Bin 240L Black', Feature => { Status => { Name => "IN SERVICE" }, FeatureType => { ID => 6533 } }, Frequency => 'Every two weeks' },
+        { JobName => 'Empty Bin Recycling 240l', Feature => { Status => { Name => "IN SERVICE" }, FeatureType => { ID => 6534 } } },
+        { JobName => 'Empty Clinical Waste', Feature => { Status => { Name => "IN SERVICE" }, FeatureType => { ID => 6815 } } },
+        { JobName => 'Empty Brown Bin', Feature => { Status => { Name => "PLANNED" }, FeatureType => { ID => 6579 } } },
+    ] });
+    $b->mock('ServiceRequests_Get', sub { [
+        # No open requests at present
+    ] });
+    $b->mock('Premises_Attributes_Get', sub { [] });
+    $b->mock('Premises_Events_Get', sub { [
+        # No open events at present
+    ] });
+    $b->mock('Streets_Events_Get', sub { [
+        # No open events at present
+    ] });
+
+    return $b, $jobs_fsd_get;
+}
 
 done_testing;

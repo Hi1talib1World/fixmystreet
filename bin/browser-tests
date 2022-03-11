@@ -21,9 +21,12 @@ BEGIN {
         highwaysengland
         hounslow
         isleofwight
+        lincolnshire
+        merton
         northamptonshire
         oxfordshire
         peterborough
+        shropshire
         tfl
         westminster
     )];

@@ -20,7 +20,7 @@ describe('buckinghamshire cobrand', function() {
     cy.pickCategory('Roads & Pavements');
     cy.wait('@roads-layer');
     cy.nextPageReporting();
-    cy.get('#subcategory_RoadsPavements label').contains('Parks').click();
+    cy.pickSubcategory('Roads & Pavements', 'Parks');
     cy.get('[name=site_code]').should('have.value', '7300268');
     cy.nextPageReporting();
     cy.contains('Photo').should('be.visible');
@@ -48,12 +48,44 @@ describe('buckinghamshire cobrand', function() {
     cy.pickCategory('Roads & Pavements');
     cy.wait('@roads-layer');
     cy.nextPageReporting();
-    cy.get('#subcategory_RoadsPavements label').contains('Snow and ice problem/winter salting').click();
+    cy.pickSubcategory('Roads & Pavements', 'Snow and ice problem/winter salting');
     cy.wait('@winter-routes');
     cy.nextPageReporting();
     cy.contains('The road you have selected is on a regular gritting route').should('be.visible');
   });
 
+  describe("Parish grass cutting category speed limit question", function() {
+    var speedGreaterThan30 = '#form_speed_limit_greater_than_30';
+
+    beforeEach(function() {
+      cy.get('#map_box').click(290, 307);
+      cy.wait('@report-ajax');
+      cy.pickCategory('Grass cutting');
+      cy.wait('@around-ajax');
+      cy.nextPageReporting();
+    });
+
+    it('displays the parish name if answer is "no"', function() {
+      cy.get(speedGreaterThan30).select('no');
+      cy.nextPageReporting();
+      cy.nextPageReporting();
+      cy.contains('sent to Adstock Parish Council and also published online').should('be.visible');
+    });
+
+    it('displays the council name if answer is "yes"', function() {
+      cy.get(speedGreaterThan30).select('yes');
+      cy.nextPageReporting();
+      cy.nextPageReporting();
+      cy.contains('sent to Buckinghamshire Council and also published online').should('be.visible');
+    });
+
+    it('displays the council name if answer is "dont_know"', function() {
+      cy.get(speedGreaterThan30).select('dont_know');
+      cy.nextPageReporting();
+      cy.nextPageReporting();
+      cy.contains('sent to Buckinghamshire Council and also published online').should('be.visible');
+    });
+  });
 });
 
 describe('buckinghamshire roads handling', function() {
@@ -72,7 +104,7 @@ describe('buckinghamshire roads handling', function() {
     cy.pickCategory('Roads & Pavements');
     cy.wait('@roads-layer');
     cy.nextPageReporting();
-    cy.get('#subcategory_RoadsPavements label').contains('Parks').click();
+    cy.pickSubcategory('Roads & Pavements', 'Parks');
     cy.nextPageReporting();
     cy.contains('Please select a road on which to make a report.').should('be.visible');
   });

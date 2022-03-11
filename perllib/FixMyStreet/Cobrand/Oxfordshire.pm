@@ -4,7 +4,6 @@ use base 'FixMyStreet::Cobrand::UKCouncils';
 use strict;
 use warnings;
 use Moo;
-with 'FixMyStreet::Roles::Open311Multi';
 
 use LWP::Simple;
 use URI;
@@ -188,6 +187,11 @@ sub open311_post_send {
 sub open311_munge_update_params {
     my ($self, $params, $comment, $body) = @_;
 
+    my @contacts = $comment->problem->contacts;
+    foreach my $contact (@contacts) {
+        $params->{service_code} = $contact->email if $contact->sent_by_open311;
+    }
+
     if ($comment->get_extra_metadata('defect_raised')) {
         my $p = $comment->problem;
         my ($e, $n) = $p->local_coords;
@@ -277,6 +281,25 @@ sub report_inspect_update_extra {
 }
 
 sub on_map_default_status { return 'open'; }
+
+sub around_nearby_filter {
+    my ($self, $params) = @_;
+    # If the category is a streetlighting one, search all
+    my $cat = $params->{categories}[0];
+    if ($cat) {
+        $cat = $self->body->contacts->not_deleted->search({ category => $cat })->first;
+        if ($cat && $cat->groups->[0] eq 'Street Lighting') {
+            my @contacts = $self->body->contacts->not_deleted->all;
+            @contacts =
+                map { $_->category }
+                grep { $_->groups->[0] eq 'Street Lighting' }
+                @contacts;
+            $params->{categories} = \@contacts;
+            $params->{distance} = 0.1; # Reduce the distance as searching more things
+        }
+    }
+
+}
 
 sub admin_user_domain { 'oxfordshire.gov.uk' }
 

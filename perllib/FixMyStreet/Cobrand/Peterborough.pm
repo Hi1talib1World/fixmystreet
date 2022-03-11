@@ -5,6 +5,7 @@ use utf8;
 use strict;
 use warnings;
 use Integrations::Bartec;
+use List::Util qw(any);
 use Sort::Key::Natural qw(natkeysort_inplace);
 use FixMyStreet::WorkingDays;
 use Utils;
@@ -152,7 +153,7 @@ sub get_body_sender {
         my $features = $self->_fetch_features(
             {
                 type => 'arcgis',
-                url => 'https://peterborough.assets/2/query?',
+                url => 'https://peterborough.assets/4/query?',
                 buffer => 1,
             },
             $x,
@@ -489,6 +490,8 @@ sub look_up_property {
 
     my %premises = map { $_->{uprn} => $_ } @$premises;
 
+    my $attributes = $self->property_attributes($uprn);
+    $premises{$uprn}{attributes} = $attributes;
     return $premises{$uprn};
 }
 
@@ -558,10 +561,10 @@ sub bin_services_for_address {
         # small food caddy?
     );
 
-    my %container_removal_ids = (
-        6533 => [ 487 ], # 240L Black
-        6534 => [ 488 ], # 240L Green
-        6579 => [ 489 ], # 240L Brown
+    my %container_service_ids = (
+        6533 => 255, # 240L Black
+        6534 => 254, # 240L Green
+        6579 => 253, # 240L Brown
         6836 => undef, # Refuse 1100l
         6837 => undef, # Refuse 660l
         6839 => undef, # Refuse 240l
@@ -591,8 +594,8 @@ sub bin_services_for_address {
 
     # TODO parallelize these calls if performance is an issue
     my $jobs = $bartec->Jobs_Get($property->{uprn});
-    my $job_dates = $bartec->Jobs_FeatureScheduleDates_Get($property->{uprn});
     my $schedules = $bartec->Features_Schedules_Get($property->{uprn});
+    my $job_dates = relevant_jobs($bartec, $property->{uprn}, $schedules);
     my $events_uprn = $bartec->Premises_Events_Get($property->{uprn});
     my $events_usrn = $bartec->Streets_Events_Get($property->{usrn});
     my $open_requests = $self->open_service_requests_for_uprn($property->{uprn}, $bartec);
@@ -646,15 +649,18 @@ sub bin_services_for_address {
         next if $seen_containers{$container_id};
         $seen_containers{$container_id} = 1;
 
-        my $report_service_ids = $container_removal_ids{$container_id};
-        my @report_service_ids_open = grep { $open_requests->{$_} } @$report_service_ids;
+        my $report_service_id = $container_service_ids{$container_id};
+        my @report_service_ids_open = grep { $open_requests->{$_} } $report_service_id;
         my $request_service_ids = $container_request_ids{$container_id};
-        my @request_service_ids_open = grep { $open_requests->{$_} } @$request_service_ids;
+        # Open request for same thing, or for all bins, or for large black bin
+        my @request_service_ids_open = grep { $open_requests->{$_} || $open_requests->{425} || ($_ == 419 && $open_requests->{422}) } @$request_service_ids;
 
+        my $last_obj = { date => $last, ordinal => ordinal($last->day) } if $last;
+        my $next_obj = { date => $next, ordinal => ordinal($next->day) } if $next;
         my $row = {
             id => $_->{JobID},
-            last => { date => $last, ordinal => ordinal($last->day) },
-            next => { date => $next, ordinal => ordinal($next->day) },
+            last => $last_obj,
+            next => $next_obj,
             service_name => $service_name_override{$name} || $name,
             schedule => $schedules{$name}->{Frequency},
             service_id => $container_id,
@@ -667,7 +673,7 @@ sub bin_services_for_address {
             # is there already an open bin request for this container?
             request_open => @request_service_ids_open ? 1 : 0,
             # can this collection be reported as having been missed?
-            report_allowed => $self->_waste_report_allowed($last),
+            report_allowed => $last ? $self->_waste_report_allowed($last) : 0,
             # is there already a missed collection report open for this container
             # (or a missed assisted collection for any container)?
             report_open => ( @report_service_ids_open || $open_requests->{492} ) ? 1 : 0,
@@ -684,6 +690,8 @@ sub bin_services_for_address {
                 my $is_staff = $self->{c}->user_exists && $self->{c}->user->from_body && $self->{c}->user->from_body->name eq "Peterborough City Council";
                 $row->{report_allowed} = $is_staff ? 1 : 0;
                 $row->{report_locked_out} = [ "ON DAY PRE 5PM" ];
+                # Set a global flag to show things in the sidebar
+                $self->{c}->stash->{on_day_pre_5pm} = 1;
             }
             # But if it has been marked as locked out, show that
             if (my $types = $premise_dates_to_lock_out{$last->ymd}{$container_id}) {
@@ -709,20 +717,32 @@ sub bin_services_for_address {
     my $skip_bags = $self->{c}->get_param('skip_bags');
 
     @out = () if $bags_only;
-    my $food_containers = $bags_only ? [ 428 ] : $skip_bags ? [ 424, 423 ] : [ 424, 423, 428 ];
 
-    push @out, {
+    my @food_containers;
+    if ($bags_only) {
+        push(@food_containers, 428) unless $open_requests->{428};
+    } else {
+        unless ( $open_requests->{493} || $open_requests->{425} ) { # Both food bins, or all bins
+            push(@food_containers, 424) unless $open_requests->{424}; # Large food caddy
+            push(@food_containers, 423) unless $open_requests->{423}; # Small food caddy
+        }
+        push(@food_containers, 428) unless $skip_bags || $open_requests->{428};
+    }
+
+    push(@out, {
         id => "FOOD_BINS",
         service_name => "Food bins",
         service_id => "FOOD_BINS",
-        request_containers => $food_containers,
+        request_containers => \@food_containers,
         request_allowed => 1,
         request_max => 1,
         request_only => 1,
-        report_only => 1,
-    };
+        report_only => !$open_requests->{252}, # Can report if no open report
+    }) if @food_containers;
 
-    unless ( $bags_only ) {
+    # All bins, black bin, green bin, large black bin, small food caddy, large food caddy, both food bins
+    my $any_open_bin_request = any { $open_requests->{$_} } (425, 419, 420, 422, 423, 424, 493);
+    unless ( $bags_only || $any_open_bin_request ) {
         # We want this one to always appear first
         unshift @out, {
             id => "_ALL_BINS",
@@ -735,6 +755,18 @@ sub bin_services_for_address {
         };
     }
     return \@out;
+}
+
+sub relevant_jobs {
+    my ($bartec, $uprn, $schedules) = @_;
+    my $jobs = $bartec->Jobs_FeatureScheduleDates_Get($uprn);
+    my %schedules = map { $_->{JobName} => $_ } @$schedules;
+    my @jobs = grep {
+        my $name = $_->{JobName};
+        $schedules{$name}->{Feature}->{Status}->{Name} eq 'IN SERVICE'
+        && $schedules{$name}->{Feature}->{FeatureType}->{ID} != 6815;
+    } @$jobs;
+    return \@jobs;
 }
 
 sub _waste_report_allowed {
@@ -758,7 +790,9 @@ sub bin_future_collections {
     my $bartec = $self->feature('bartec');
     $bartec = Integrations::Bartec->new(%$bartec);
 
-    my $jobs = $bartec->Jobs_FeatureScheduleDates_Get($self->{c}->stash->{property}{uprn});
+    my $uprn = $self->{c}->stash->{property}{uprn};
+    my $schedules = $bartec->Features_Schedules_Get($uprn);
+    my $jobs = relevant_jobs($bartec, $uprn, $schedules);
 
     my $events = [];
     foreach (@$jobs) {
@@ -815,8 +849,7 @@ sub waste_munge_request_form_data {
 sub waste_munge_report_form_data {
     my ($self, $data) = @_;
 
-    my $uprn = $self->{c}->stash->{property}->{uprn};
-    my $attributes = $self->property_attributes($uprn);
+    my $attributes = $self->{c}->stash->{property}->{attributes};
 
     if ( $attributes->{"ASSISTED COLLECTION"} ) {
         # For assisted collections we just raise a single "missed assisted collection"
@@ -905,8 +938,7 @@ sub waste_munge_report_data {
     my $service_id = $container_service_ids{$id};
 
     if ($service_id == 255) {
-        my $uprn = $c->stash->{property}->{uprn};
-        my $attributes = $self->property_attributes($uprn);
+        my $attributes = $c->stash->{property}->{attributes};
         if ($attributes->{"LARGE BIN"}) {
             # For large bins, we need different text to show
             $id = "LARGE BIN";
@@ -942,8 +974,7 @@ sub waste_munge_problem_data {
     my $category_verbose = $service_details->{label};
 
     if ($container_id == 6533 && $category =~ /Lid|Wheels/) { # 240L Black repair
-        my $uprn = $c->stash->{property}->{uprn};
-        my $attributes = $self->property_attributes($uprn);
+        my $attributes = $c->stash->{property}->{attributes};
         if ($attributes->{"LARGE BIN"}) {
             # For large bins, we need to raise a new bin request instead
             $container_id = "LARGE BIN";
@@ -1038,14 +1069,22 @@ sub waste_munge_problem_form_fields {
 
         next unless $services{$id};
 
+        # Don't allow any problem reports on a bin if a new one is currently
+        # requested. Check for large bin requests for black bins as well
+        # 419/420 are new black/green bin requests, 422 is large black bin request
+        # 6533/6534 are black/green containers
+        my $black_bin_request = (($open_requests->{419} || $open_requests->{422}) && $id == 6533);
+        my $green_bin_request = ($open_requests->{420} && $id == 6534);
+
         my $categories = $services{$id};
         foreach (sort keys %$categories) {
             my $cat_name = $categories->{$_};
+            my $disabled = $open_requests->{$_} || $black_bin_request || $green_bin_request;
             push @$field_list, "service-$_" => {
                 type => 'Checkbox',
                 label => $name,
                 option_label => $cat_name,
-                $open_requests->{$_} ? ( disabled => 1 ) : (),
+                disabled => $disabled,
             };
 
             # Set this to empty so the heading isn't shown multiple times
@@ -1056,6 +1095,7 @@ sub waste_munge_problem_form_fields {
         type => 'Checkbox',
         label => $self->{c}->stash->{services_problems}->{497}->{container_name},
         option_label => $self->{c}->stash->{services_problems}->{497}->{label},
+        disabled => $open_requests->{497},
     };
     push @$field_list, "extra_detail" => {
         type => 'Text',

@@ -25,6 +25,20 @@ sub disambiguate_location {
     };
 }
 
+sub report_validation {
+    my ($self, $report, $errors) = @_;
+
+    my @extra_fields = @{ $report->get_extra_fields() };
+
+    foreach my $extra ( @extra_fields ) {
+        if ( length($extra->{value}) > 255 ) {
+            $errors->{'x' . $extra->{name}} = qq+Your answer to the question: "$extra->{description}" is too long. Please use a maximum of 255 characters.+;
+        }
+    }
+
+    return $errors;
+}
+
 sub enter_postcode_text { 'Enter a postcode, street name and area, or check an existing report number' }
 
 sub get_geocoder { 'OSM' }
@@ -36,7 +50,8 @@ sub allow_anonymous_reports { 'button' }
 sub anonymous_account {
     my $self = shift;
     return {
-        email => $self->feature('anonymous_account') . '@fixmystreet.merton.gov.uk',
+        # Merton requested something other than @merton.gov.uk due to their CRM misattributing reports to staff.
+        email => $self->feature('anonymous_account') . '@anonymous-fms.merton.gov.uk',
         name => 'Anonymous user',
     };
 }
@@ -75,6 +90,19 @@ sub open311_extra_data_include {
     return [];
 }
 
+sub open311_get_update_munging {
+    my ($self, $comment) = @_;
+
+    my $latest = $comment->problem->comments->search({ state => 'confirmed' }, {
+        order_by => [ { -desc => 'confirmed' }, { -desc => 'id' } ],
+        rows => 1,
+    })->first;
+    # If last update has same text and is the system user, hide it
+    if ($latest && $latest->text eq $comment->text && $latest->user_id == $comment->user_id) {
+        $comment->state('hidden');
+    }
+}
+
 sub report_new_munge_before_insert {
     my ($self, $report) = @_;
 
@@ -93,16 +121,50 @@ sub report_new_munge_before_insert {
     }
 }
 
-sub lookup_site_code_config { {
-    buffer => 50, # metres
-    url => FixMyStreet->config('STAGING_SITE') ? "https://tilma.staging.mysociety.org/mapserver/openusrn" : "https://tilma.mysociety.org/mapserver/openusrn",
-    srsname => "urn:ogc:def:crs:EPSG::27700",
-    typename => 'usrn',
-    property => "usrn",
-    accept_feature => sub { 1 },
-} }
+sub lookup_site_code {
+    my $self = shift;
+    my $row = shift;
+    my $field = shift;
 
-sub cut_off_date { '2020-12-06' } # 1 yr prior to FMS Pro go-live
+    my ($x, $y) = $row->local_coords;
+    my $buffer = 50;
+    my ($w, $s, $e, $n) = ($x-$buffer, $y-$buffer, $x+$buffer, $y+$buffer);
+
+    my $filter = "
+    <ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">
+        <ogc:And>
+            <ogc:PropertyIsNotEqualTo>
+                <ogc:PropertyName>street_type</ogc:PropertyName>
+                <ogc:Literal>Numbered Street</ogc:Literal>
+            </ogc:PropertyIsNotEqualTo>
+            <ogc:BBOX>
+                <ogc:PropertyName>geometry</ogc:PropertyName>
+                <gml:Envelope xmlns:gml='http://www.opengis.net/gml' srsName='EPSG:27700'>
+                    <gml:lowerCorner>$w $s</gml:lowerCorner>
+                    <gml:upperCorner>$e $n</gml:upperCorner>
+                </gml:Envelope>
+                <Distance units='m'>50</Distance>
+            </ogc:BBOX>
+        </ogc:And>
+    </ogc:Filter>";
+    $filter =~ s/\n\s+//g;
+
+    my $cfg = {
+        url => FixMyStreet->config('STAGING_SITE') ? "https://tilma.staging.mysociety.org/mapserver/openusrn" : "https://tilma.mysociety.org/mapserver/openusrn",
+        srsname => "urn:ogc:def:crs:EPSG::27700",
+        typename => 'usrn',
+        property => "usrn",
+        filter => $filter,
+        accept_feature => sub { 1 },
+    };
+
+    my $features = $self->_fetch_features($cfg, $x, $y);
+    return $self->_nearest_feature($cfg, $x, $y, $features);
+}
+
+sub cut_off_date { '2021-12-13' } # Merton cobrand go-live
+
+sub report_age { '3 months' }
 
 sub abuse_reports_only { 1 }
 

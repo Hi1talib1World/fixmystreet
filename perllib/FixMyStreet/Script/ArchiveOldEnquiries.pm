@@ -16,14 +16,25 @@ my $opts = {
     closed_state => 'closed',
 };
 
+sub filter {
+    my $rs = shift;
+    $rs ||= FixMyStreet::DB->resultset('Problem');
+    my $params = {
+        state => [ FixMyStreet::DB::Result::Problem->open_states() ],
+    };
+    if ($opts->{category}) {
+        $params->{category} = $opts->{category};
+    }
+    return $rs->to_body($opts->{body})->search($params);
+}
+
 sub query {
     my $rs = shift;
-    return $rs->to_body($opts->{body})->search({
+    return filter($rs)->search({
         -and => [
           lastupdate => { '<', $opts->{email_cutoff} },
           lastupdate => { '>', $opts->{closure_cutoff} },
         ],
-        state => [ FixMyStreet::DB::Result::Problem->open_states() ],
     });
 }
 
@@ -35,6 +46,10 @@ sub update_options {
             %$params,
         };
     }
+
+    if ($opts->{'show-emails'}) {
+        $opts->{show_emails} = $opts->{'show-emails'};
+    }
 }
 
 sub archive {
@@ -44,6 +59,12 @@ sub archive {
     unless ( $opts->{commit} ) {
         printf "Doing a dry run; emails won't be sent and reports won't be closed.\n";
         printf "Re-run with --commit to actually archive reports.\n\n";
+    }
+
+    if ($opts->{show_emails}) {
+        if ($opts->{reports} || $opts->{commit}) {
+            die "Aborting: the show_emails flag was specified with --commit or --reports. Run without --show_emails to close reports.\n";
+        }
     }
 
     if ( $opts->{reports} ) {
@@ -57,10 +78,7 @@ sub close_list {
     my $reports = get_ids_from_csv();
     my $max_reports = scalar @$reports;
 
-    my $rs  = FixMyStreet::DB->resultset("Problem")->search({
-        id => $reports,
-        state => [ FixMyStreet::DB::Result::Problem->open_states() ],
-    })->to_body( $opts->{body});
+    my $rs = filter()->search({ id => $reports });
 
     my $no_message = $rs->search({
         lastupdate => { '<', $opts->{closure_cutoff} },
@@ -73,6 +91,7 @@ sub close_list {
     die "Found more reports than expected\n" if $no_message->count + $with_message->count > $max_reports;
 
     $opts->{retain_alerts} = 1;
+
     printf("Closing %d reports, with alerts: ", $with_message->count);
     close_problems($with_message);
     printf "done\n";
@@ -115,10 +134,9 @@ sub get_closure_message {
 }
 
 sub close_with_emails {
-    die "Please provide the name of an cobrand for the archive email template" unless $opts->{cobrand};
+    die "Please provide the name of a cobrand for the archive email template" unless $opts->{cobrand};
     die "Please provide an email_cutoff option" unless $opts->{email_cutoff};
-    my $rs = FixMyStreet::DB->resultset('Problem');
-    my @user_ids = query($rs)->search(undef,
+    my @user_ids = query()->search(undef,
     {
         distinct => 1,
         columns  => ['user_id'],
@@ -132,7 +150,7 @@ sub close_with_emails {
     });
 
     my $user_count = $users->count;
-    my $problem_count = query($rs)->search(undef,
+    my $problem_count = query()->search(undef,
     {
         columns  => ['id'],
         rows => $opts->{limit},
@@ -140,7 +158,7 @@ sub close_with_emails {
 
     printf("%d users will receive closure emails about %d reports which will be closed.\n", $user_count, $problem_count);
 
-    if ( $opts->{commit} ) {
+    if ( $opts->{commit} || $opts->{show_emails} ) {
         my $i = 0;
         while ( my $user = $users->next ) {
             printf("%d/%d: User ID %d\n", ++$i, $user_count, $user->id);
@@ -148,9 +166,8 @@ sub close_with_emails {
         }
     }
 
-    my $problems_to_close = $rs->to_body($opts->{body})->search({
+    my $problems_to_close = filter()->search({
         lastupdate => { '<', $opts->{closure_cutoff} },
-        state      => [ FixMyStreet::DB::Result::Problem->open_states() ],
     }, {
         rows => $opts->{limit},
     });
@@ -186,6 +203,9 @@ sub send_email_and_close {
 
     # Send email
     printf("    Sending email about %d reports: ", scalar(@problems));
+
+    my $output_email_as_string = $opts->{show_emails} ? 1 : 0;
+
     my $email_error = FixMyStreet::Email::send_cron(
         $problems->result_source->schema,
         'archive-old-enquiries.txt',
@@ -194,7 +214,7 @@ sub send_email_and_close {
             To => [ [ $user->email, $user->name ] ],
         },
         undef,
-        undef,
+        $output_email_as_string,
         $cobrand,
         $problems[0]->lang,
     );
@@ -203,8 +223,12 @@ sub send_email_and_close {
         printf("done.\n    Closing reports: ");
         close_problems($problems);
         printf("done.\n");
-    } else {
-        printf("error! Not closing reports for this user.\n")
+    } else { # test: emails went to std. output
+        if ( $opts->{show_emails} ) {
+            printf("done.\n");
+        } else { # genuine error
+            printf("error! Not closing reports for this user.\n$email_error")
+        }
     }
 }
 
@@ -250,6 +274,5 @@ sub close_problems {
                 parameter => $comment->id,
             } );
         }
-
     }
 }

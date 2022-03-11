@@ -276,7 +276,7 @@ sub update_contact : Private {
     $contact->send_method( $c->get_param('send_method') );
 
     # Set flags in extra to the appropriate values
-    foreach (qw(photo_required open311_protect updates_disallowed reopening_disallowed assigned_users_only anonymous_allowed)) {
+    foreach (qw(photo_required open311_protect updates_disallowed reopening_disallowed assigned_users_only anonymous_allowed prefer_if_multiple)) {
         if ( $c->get_param($_) ) {
             $contact->set_extra_metadata( $_ => 1 );
         } else {
@@ -315,6 +315,13 @@ sub update_contact : Private {
 
     $c->forward('/admin/update_extra_fields', [ $contact ]);
     $c->forward('contact_cobrand_extra_fields', [ $contact, \%errors ]);
+
+    for ( @{ $contact->extra->{_fields} } ) {
+        if ( $_->{code} =~ /\s/ ) {
+            $errors{code} = _('Codes for extra data must not contain spaces');
+            last;
+        }
+    }
 
     # Special form disabling form
     if ($c->get_param('disable')) {
