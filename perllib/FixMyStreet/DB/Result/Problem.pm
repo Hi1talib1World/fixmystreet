@@ -950,6 +950,12 @@ sub has_given_send_fail_body_id {
     return any { $_ == $id } @{ $self->send_fail_body_ids };
 }
 
+sub mark_as_sent {
+    my $self = shift;
+    $self->whensent( \'current_timestamp' );
+    $self->send_fail_body_ids( [] );
+}
+
 sub resend {
     my $self = shift;
     $self->whensent(undef);
