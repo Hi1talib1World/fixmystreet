@@ -251,6 +251,51 @@ sub munge_sendreport_params {
     }
 }
 
+sub open311_extra_data_include {
+    my ($self, $row, $h, $contact) = @_;
+
+    my $title = $row->title;
+
+    # Certain categories for the Alloy Environmental Services integration
+    # have manually-created extra fields that should be appended to the
+    # report title when submitted via Open311.
+    # This fetches the field names from the COBRAND_FEATURES config, so
+    # if they change in the future it doesn't require code changes to deploy.
+    my $field_names = $self->feature('environment_extra_fields') || [];
+    my %fields = map { $_ => 1 } @$field_names;
+    if ($contact->email =~ /^Environment/) {
+        for (@{ $row->get_extra_fields }) {
+            if ($fields{$_->{name}}) {
+                $title .= "\n\n" . $_->{description} . "\n" . $_->{value};
+            }
+        }
+    }
+
+    my $open311_only = [
+        { name => 'report_url',
+          value => $h->{url} },
+        { name => 'title',
+          value => $title },
+        { name => 'description',
+          value => $row->detail },
+        { name => 'category',
+          value => $row->category },
+    ];
+
+    if ($contact->email eq "Environment-Graffiti") {
+        push @$open311_only,
+            { name => 'graffiti_offensive', value => $row->get_extra_field_value('offensive') || '' };
+        push @$open311_only,
+            { name => 'graffiti_size', value => $row->get_extra_field_value('size') || '0' };
+        push @$open311_only,
+            { name => 'graffiti_landtype', value => $row->get_extra_field_value('landtype') || '' };
+    }
+
+
+
+    return $open311_only;
+}
+
 sub open311_munge_update_params {
     my ($self, $params, $comment, $body) = @_;
 
@@ -320,7 +365,7 @@ sub update_email_shortlisted_user {
     my ($self, $update) = @_;
     my $c = $self->{c};
     my $cobrand = FixMyStreet::Cobrand::Hackney->new; # $self may be FMS
-    return if !$update->problem->to_body_named('Hackney');
+    return if $update->problem->cobrand_data eq 'noise' || !$update->problem->to_body_named('Hackney');
     my $sent_to = $update->problem->get_extra_metadata('sent_to') || [];
     if (@$sent_to) {
         my @to = map { [ $_, $cobrand->council_name ] } @$sent_to;
