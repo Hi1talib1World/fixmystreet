@@ -282,6 +282,16 @@ sub open311_extra_data_include {
           value => $row->category },
     ];
 
+    if ($contact->email eq "Environment-Graffiti") {
+        push @$open311_only,
+            { name => 'graffiti_offensive', value => $row->get_extra_field_value('offensive') || '' };
+        push @$open311_only,
+            { name => 'graffiti_size', value => $row->get_extra_field_value('size') || '0' };
+        push @$open311_only,
+            { name => 'graffiti_landtype', value => $row->get_extra_field_value('landtype') || '' };
+    }
+
+
 
     return $open311_only;
 }
