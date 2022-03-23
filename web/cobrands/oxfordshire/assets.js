@@ -526,7 +526,9 @@ var oxfordshire_defaults = $.extend(true, {}, fixmystreet.alloyv2_defaults, {
   feature_code: 'title',
   asset_id_field: 'itemId',
   construct_selected_asset_message: function(asset) {
-      var out = 'You have selected street light <b>' + asset.attributes.title + '</b>.';
+      var out = 'You have selected ';
+      out += asset.attributes.unit_type || "street light";
+      out += " <b>" + asset.attributes.title + '</b>.';
       if (asset.attributes.private) {
           out += " This private street light asset is not under the responsibility of Oxfordshire County Council and therefore we are unable to accept reports for the asset.";
       }
