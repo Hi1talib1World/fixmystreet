@@ -721,7 +721,7 @@ sub nearest_address {
 }
 
 sub body {
-    my ( $problem, $link ) = @_;
+    my ( $problem, $link, $successful_send_only ) = @_;
     my $body;
     if ($problem->external_body) {
         if ($problem->cobrand eq 'zurich') {
@@ -731,7 +731,14 @@ sub body {
             $body = FixMyStreet::Template::html_filter($problem->external_body);
         }
     } else {
-        my $bodies = $problem->bodies;
+        my %bodies = %{$problem->bodies};
+
+        # If we only want bodies with successful send methods (in the case of
+        # a problem that has multiple send methods), remove failed
+        if ($successful_send_only) {
+            delete $bodies{$_} for @{ $problem->send_fail_body_ids // [] };
+        }
+
         my @body_names = sort map {
             my $name = $_->name;
             if ($link and FixMyStreet->config('AREA_LINKS_FROM_PROBLEMS')) {
@@ -739,7 +746,7 @@ sub body {
             } else {
                 FixMyStreet::Template::html_filter($name);
             }
-        } values %$bodies;
+        } values %bodies;
         if ( scalar @body_names > 2 ) {
             $body = join( ', ', splice @body_names, 0, -1);
             $body = join( ',' . _(' and '), ($body, $body_names[-1]));
@@ -845,7 +852,8 @@ sub can_display_external_id {
 sub duration_string {
     my $problem = shift;
     my $cobrand = $problem->result_source->schema->cobrand;
-    my $body = $cobrand->call_hook(link_to_council_cobrand => $problem) || $problem->body(1);
+    my $body = $cobrand->call_hook( link_to_council_cobrand => $problem )
+        || $problem->body( 1, 1 );
     my $handler = $cobrand->call_hook(get_body_handler_for_problem => $problem);
     if ( $handler && $handler->call_hook('is_council_with_case_management') ) {
         my $s = sprintf(_('Received by %s moments later'), $body);
@@ -948,6 +956,22 @@ sub has_given_send_fail_body_id {
     my $id   = shift;
 
     return any { $_ == $id } @{ $self->send_fail_body_ids };
+}
+
+sub send_fail_methods {
+    # Deduce from send_fail_body_ids
+    my $self = shift;
+
+    my $bodies = $self->bodies;
+
+    my @send_fail_methods;
+
+    for (@{$self->send_fail_body_ids}) {
+        my $body = $bodies->{$_};
+        push @send_fail_methods, $body->send_method;
+    }
+
+    return \@send_fail_methods;
 }
 
 sub mark_as_sent {
