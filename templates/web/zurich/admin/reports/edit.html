@@ -23,7 +23,7 @@
 <dl>
     <dd class="screen-only">&raquo; <a href="[% c.uri_for_email( '/report', problem.id ) %]">[% loc('View report on site' )%]</a></dd>
 
-    <dd class="screen-only">&raquo; <a href="https://gdi.intra.stzh.ch/geoserver_viewer/?bl=AV&amp;t=Liegenschafteninventar_OGD&amp;c=[% problem.local_coords.0 %]%2C[% problem.local_coords.1 %]&amp;s=1000" target="_blank">Standort in Liegenschafteninventar anzeigen</a></dd>
+    <dd class="screen-only">&raquo; <a href="https://gdi.intra.stzh.ch/geoserver_viewer/?bl=AV&amp;t=Liegenschafteninventar_OGD&amp;c=[% problem.local_coords.0 %]%2C[% problem.local_coords.1 %]&amp;s=1000&amp;hc=1" target="_blank">Standort in Liegenschafteninventar anzeigen</a></dd>
 
     <dd class="screen-only">&raquo; <a href="http://webgis.intra.stzh.ch/stapo/GoogleStreetView.asp?lat=[% problem.latitude %]&amp;lon=[% problem.longitude %]" target="_blank">[% loc('Street View') %]</a></dd>
 
@@ -226,20 +226,22 @@
 
     [%# Public response field shown for Ruckmeldung ausstehend states
       # (e.g. various pstates) %]
-    <ul class="no-bullets screen-only">
-        <li id="status_update_container"><label for="status_update">
-          [% IF c.cobrand.zurich_user_response_states.$pstate %]
-            [% loc('Reply to user:') %]
-          [% ELSE %]
-            [% loc('Public response:') %]
-          [% END %]
-        </label>
-        [% INCLUDE 'admin/response_templates_select.html' for='status_update' %]
-        <textarea class="form-control" name='status_update' id='status_update' cols=60 rows=5>
-        [%- problem.extra.public_response || default_public_response | html -%]
-        </textarea>
-        </li>
-    </ul>
+    [% UNLESS problem.non_public %]
+      <ul class="no-bullets screen-only">
+          <li id="status_update_container"><label for="status_update">
+            [% IF c.cobrand.zurich_user_response_states.$pstate %]
+              [% loc('Reply to user:') %]
+            [% ELSE %]
+              [% loc('Public response:') %]
+            [% END %]
+          </label>
+          [% INCLUDE 'admin/response_templates_select.html' for='status_update' %]
+          <textarea class="form-control" name='status_update' id='status_update' cols=60 rows=5>
+          [%- problem.extra.public_response || default_public_response | html -%]
+          </textarea>
+          </li>
+      </ul>
+    [% END %]
 [% END %]
 
 <p align="right" class="screen-only">
