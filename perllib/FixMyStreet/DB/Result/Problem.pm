@@ -925,9 +925,14 @@ sub add_send_method {
     my $self = shift;
     my $sender = shift;
     $sender =~ s/${\SENDER_REGEX}//;
-    if (my $send_method = $self->send_method_used) {
-        $self->send_method_used("$send_method,$sender");
-    } else {
+
+    if ( my $existing_send_method = $self->send_method_used ) {
+        # Make sure we don't duplicate send methods
+        if ( $existing_send_method !~ $sender ) {
+            $self->send_method_used("$existing_send_method,$sender");
+        }
+    }
+    else {
         $self->send_method_used($sender);
     }
 }

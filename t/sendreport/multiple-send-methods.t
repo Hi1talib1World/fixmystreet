@@ -13,12 +13,12 @@ my $body_oxf = $mech->create_body_ok( 2237, 'Oxfordshire County Council' );
 my $body_cherwell
     = $mech->create_body_ok( 2419, 'Cherwell District Council' );
 
-my $contact_oxf = $mech->create_contact_ok(
+$mech->create_contact_ok(
     body_id  => $body_oxf->id,
     category => 'Other',
     email    => 'other@oxfordshire.com',
 );
-my $contact_cherwell = $mech->create_contact_ok(
+$mech->create_contact_ok(
     body_id  => $body_cherwell->id,
     category => 'Other',
     email    => 'other@cherwell.com',
@@ -284,15 +284,21 @@ subtest 'Test staging send' => sub {
         },
     );
 
+    # This forces email to be sent to user
+    # (see perllib/FixMyStreet/SendReport/Email.pm->send())
+    # CHECKME Is this a sensible thing to do?
+    FixMyStreet->test_mode(0);
+
+    $mech->clear_emails_ok;
     test_send(0);
     $report_for_staging->discard_changes;
+    my @emails = $mech->get_email;
+    like $emails[0]->header('To'), qr/-user\@example.com/,
+        'email should be sent to user';
+    is $report_for_staging->send_method_used, 'Email', 'send_method is email';
+    ok $report_for_staging->whensent, 'whensent is set';
 
-    like $report_for_staging->send_fail_reason, qr/No recipients/,
-        'send_fail_reason should be for no recipients';
-    is $report_for_staging->send_method_used, undef,
-        'send_method should be undef';
-    cmp_bag $report_for_staging->send_fail_body_ids, [],
-        'there should be no send_fail_body_ids';
+    FixMyStreet->test_mode(1);
 
     note 'Testing for report with 1 body (email)';
 
@@ -340,6 +346,156 @@ subtest 'Test staging send' => sub {
         'send_method should be email';
     cmp_bag $report_for_staging->send_fail_body_ids, [],
         'there should be no send_fail_body_ids';
+};
+
+subtest 'Test duplicate sending methods' => sub {
+    subtest 'Email' => sub {
+        $body_oxf->update( { send_method => 'Email' } );
+
+        my ($report_all_email) = $mech->create_problems_for_body(
+            1,
+            ( join ',', $body_oxf->id, $body_cherwell->id ),
+            'Test',
+            {   cobrand  => 'fixmystreet',
+                category => 'Other',
+                user     => $user,
+            }
+        );
+
+        note 'Sending fails';
+        $mock_email->mock(
+            'send',
+            sub {
+                shift->error('Email fail');
+                return -1;
+            },
+        );
+        test_send();
+        $report_all_email->discard_changes;
+
+        is $report_all_email->send_method_used, undef,
+            'send_method_used not recorded';
+        is $report_all_email->external_id, undef, 'Report has no external ID';
+
+        is $report_all_email->send_fail_count, 1,
+            'send_fail_count incremented';
+        is $report_all_email->send_fail_reason, 'Email fail',
+            'send_fail_reason is email';
+        is @{ $report_all_email->send_fail_body_ids }, 1,
+            'Only 1 failed body ID recorded';
+
+        $report_all_email->result_source->schema->cobrand->{c}
+            = $mock_catalyst;
+        is $report_all_email->duration_string, undef,
+            'duration string is undef';
+
+        note 'Sending succeeds';
+        $mock_email->unmock('send');
+        $mech->clear_emails_ok;
+        test_send();
+        $report_all_email->discard_changes;
+
+        $mech->email_count_is(1);
+        my @emails = $mech->get_email;
+        like $emails[0]->header('To'),
+            qr/"Cherwell District Council" <other\@cherwell.com>/;
+        like $emails[0]->header('To'),
+            qr/"Oxfordshire County Council" <other\@oxfordshire.com>/,
+            'email sent to both Cherwell and Oxford';
+
+        is $report_all_email->send_method_used, 'Email',
+            'send_method_used is email';
+        is $report_all_email->external_id, undef, 'Report has no external ID';
+
+        is $report_all_email->send_fail_count, 1,
+            'send_fail_count unmodified';
+        is $report_all_email->send_fail_reason, 'Email fail',
+            'send_fail_reason unmodified';
+        cmp_bag $report_all_email->send_fail_body_ids, [],
+            'no failed body IDs';
+
+        $report_all_email->result_source->schema->cobrand->{c}
+            = $mock_catalyst;
+        like $report_all_email->duration_string,
+            qr/Cherwell District Council/;
+        like $report_all_email->duration_string,
+            qr/Oxfordshire County Council/,
+            'duration string has both Cherwell and Oxford';
+    };
+
+    subtest 'Open311' => sub {
+        $body_oxf->update(
+            {   send_method  => 'Open311',
+                endpoint     => 'http://endpoint.example.com',
+                jurisdiction => 'FMS',
+                api_key      => 'test',
+            },
+        );
+
+        $body_cherwell->update(
+            {   send_method  => 'Open311',
+                endpoint     => 'http://endpoint.example.com',
+                jurisdiction => 'FMS',
+                api_key      => 'test',
+            },
+        );
+
+        my ($report_all_open311) = $mech->create_problems_for_body(
+            1,
+            ( join ',', $body_oxf->id, $body_cherwell->id ),
+            'Test',
+            {   cobrand  => 'fixmystreet',
+                category => 'Other',
+                user     => $user,
+            }
+        );
+
+        note 'Sending fails';
+        test_send();
+        $report_all_open311->discard_changes;
+
+        is $report_all_open311->send_method_used, undef,
+            'send_method_used not recorded';
+        is $report_all_open311->external_id, undef,
+            'Report has no external ID';
+
+        is $report_all_open311->send_fail_count, 1,
+            'send_fail_count incremented';
+        is $report_all_open311->send_fail_reason, 'Open311 fail',
+            'send_fail_reason is Open311';
+        cmp_bag $report_all_open311->send_fail_body_ids,
+            [ $body_cherwell->id, $body_oxf->id ],
+            'Failed body IDs added for both bodies';
+
+        $report_all_open311->result_source->schema->cobrand->{c}
+            = $mock_catalyst;
+        is $report_all_open311->duration_string, undef,
+            'duration string is undef';
+
+        note 'Sending succeeds';
+        $mock_open311->unmock('send');
+        test_send();
+        $report_all_open311->discard_changes;
+
+        is $report_all_open311->send_method_used, 'Open311',
+            'send_method_used is Open311';
+        ok $report_all_open311->external_id, 'report has external ID';
+
+        is $report_all_open311->send_fail_count, 1,
+            'send_fail_count unmodified';
+        is $report_all_open311->send_fail_reason, 'Open311 fail',
+            'send_fail_reason unmodified';
+        cmp_bag $report_all_open311->send_fail_body_ids, [],
+            'no failed body IDs';
+
+        $report_all_open311->result_source->schema->cobrand->{c}
+            = $mock_catalyst;
+        like $report_all_open311->duration_string,
+            qr/Cherwell District Council/;
+        like $report_all_open311->duration_string,
+            qr/Oxfordshire County Council/,
+            'duration string has both Cherwell and Oxford';
+    };
 };
 
 sub test_send {

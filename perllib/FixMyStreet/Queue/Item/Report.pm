@@ -229,38 +229,42 @@ sub _send {
         # no bodies attached
         if ( FixMyStreet->staging_flag( 'send_reports', 0 ) ) {
             $self->log( "Sending using " . $sender_key );
-            my $res = $sender->send( $self->report, $self->h );
+            my $res = $sender->send( $report, $self->h );
 
             $result *= $res;
-            $self->report->add_send_method($sender_key) if !$res;
+            $report->add_send_method($sender_key) if !$res;
         }
         else {
-            # Skip if no body ID
-            my $body_id;
-            $body_id = $sender->bodies->[0]->id
-                if $sender->bodies && $sender->bodies->[0];
-            next unless $body_id;
+            for my $body ( @{ $sender->bodies } ) {
+                my $body_id = $body->id;
 
-            # If a report has send_fail_body_ids, we only want to attempt
-            # sending for those bodies. Assume success and skip otherwise.
-            if ( @{ $report->send_fail_body_ids }
-                && !$report->has_given_send_fail_body_id($body_id) )
-            {
-                $sender->success(1);
-                next;
-            }
+                # If a report has send_fail_body_ids, we only want to attempt
+                # sending for those bodies. Assume success and skip otherwise.
+                if ( @{ $report->send_fail_body_ids }
+                    && !$report->has_given_send_fail_body_id($body_id) )
+                {
+                    $sender->success(1);
+                    next;
+                }
 
-            $self->log( "Sending using " . $sender_key );
-            my $res = $sender->send( $self->report, $self->h );
+                $self->log( "Sending using " . $sender_key );
+                my $res = $sender->send( $self->report, $self->h );
 
-            $result *= $res;
+                $result *= $res;
 
-            if ($res) {
-                push @add_send_fail_body_ids, $body_id;
-            }
-            else {
-                $self->report->add_send_method($sender_key);
-                push @remove_send_fail_body_ids, $body_id;
+                if ($res) {
+                    push @add_send_fail_body_ids, $body_id;
+                }
+                else {
+                    $report->add_send_method($sender_key);
+                    push @remove_send_fail_body_ids, $body_id;
+                }
+
+                # Email is special-cased; an email to e.g. a two-tier council
+                # will have multiple recipients in the 'To' line. So we only
+                # need to record one failure (otherwise on retry/success,
+                # duplicate emails will be sent).
+                last if $sender_key eq 'FixMyStreet::SendReport::Email';
             }
         }
 
