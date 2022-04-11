@@ -1,6 +1,23 @@
 @import "_colours";
 @import "../sass/layout";
 
+#site-logo {
+    height: 9rem;
+    width: 5.9375rem;
+
+    .mappage & {
+        width: 3.43rem;
+        height: 4rem;
+    }
+}
+
+.nav-wrapper {
+    top: 40px;
+    .mappage & {
+        top: 10px;
+    }
+}
+
 .nav-menu--main {
     // remove special styling for this nav item
     a.report-a-problem-btn {
@@ -17,6 +34,9 @@
     a.report-a-problem-btn,
     span.report-a-problem-btn {
         padding: 0.5em 0.75em;
+        font-size: 18px;
+        font-weight: 700;
+        text-decoration: none;
 
         &, &:hover {
             color: $nav_colour;
@@ -26,10 +46,9 @@
     // underlines for clickable nav items
     a,
     a.report-a-problem-btn {
-        text-decoration: underline;
-
         &:hover {
-            text-decoration: none;
+            color: $primary;
+            text-decoration: underline;
         }
     }
 
@@ -44,14 +63,16 @@
 
 #front-main {
     margin: 0 auto;
+    margin-top: 60px;
     padding: 0 1em;
     max-width: $container-max-width;
     background: transparent;
 
     #front-main-container {
         max-width: none;
-        background: #fff;
+        background: $white;
         padding: 4%;
+        border-top: 4px solid $green;
     }
 
     #postcodeForm {
@@ -95,4 +116,3 @@ body.twothirdswidthpage .content .sticky-sidebar {
         margin: 0 0 2em 0;
     }
 }
-

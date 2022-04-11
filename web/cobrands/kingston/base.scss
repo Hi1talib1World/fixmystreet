@@ -10,16 +10,21 @@ body {
     color: $primary_b;
 }
 
+#site-header {
+    border-top-width: 0;
+}
+
 #site-logo {
-    width: 5.9375rem;
-    height: 64px;
+    width: 3.43rem;
+    height: 4rem;
     @include svg-background-image('https://www.kingston.gov.uk/site/dist/images/site-logo');
-    background-size: inherit;
+    background-size: contain;
 
     .mappage & {
         height: $mappage-header-height;
     }
 }
+
 
 a,
 .fake-link {
@@ -86,6 +91,7 @@ a,
 
             input#sub {
                 @include kingston-button-primary();
+                border-radius: 5px;
                 font-size: 1.25em;
             }
         }
@@ -123,6 +129,10 @@ label {
     }
 }
 
+input[type="submit"] {
+    border-radius: 5px;
+}
+
 .multi-select-button {
     // Focus style, copied from kingston-form-input() mixin
     &:focus {
@@ -145,7 +155,7 @@ p.form-error {
     padding: 0;
     border-radius: 0;
 
-    color: #8A1F11;
+    color: #A22C2E;
     font-weight: 700;
 }
 
@@ -179,7 +189,7 @@ body.twothirdswidthpage .content .sticky-sidebar {
     }
 }
 
-// As per Shropshire Website style guide
+// As per Kingston Website style guide
 .skiplink:focus {
     border: 1px solid #FFFFFF;
     background: #2C2C2C;
@@ -201,4 +211,66 @@ body.twothirdswidthpage .content .sticky-sidebar {
 
 .box-warning {
     background-color: $yellow;
+}
+
+.segmented-control.segmented-control--radio {
+    input:checked+label {
+        background: $blue !important;
+        color: $white !important;
+        &:hover {
+            background-color: $blue !important;
+            color: white !important;
+            text-decoration: none !important;
+            cursor: default;
+        }
+    }
+    label.btn {
+        background: $white !important;
+        border-color: $blue;
+        color: $blue !important;
+        &:hover {
+            background: $white !important;
+            color: $blue !important;
+            text-decoration: underline !important;
+        }
+        &:last-child {
+            border-right-width: 4px;
+            border-left-width: 2px;
+        }
+    }
+}
+
+.my-account-buttons {
+    text-align: right;
+}
+
+.fms-admin-info {
+    border-color: $green;
+    background-color: mix($green, $white, 15%);
+}
+
+//WasteWorks
+.waste {
+    .content[role="main"] {
+        border-top: 4px solid $green;
+    }
+
+    form.waste {
+        div.govuk-form-group {
+            display: inline-block;
+
+            &:first-child {
+                vertical-align: bottom;
+            }
+        }
+
+        .govuk-button {
+            height: 39px;
+            line-height: 1rem;
+        }
+    } 
+    .govuk-button {
+        @include kingston-button-primary;
+        border-radius: 5px;
+    }
 }

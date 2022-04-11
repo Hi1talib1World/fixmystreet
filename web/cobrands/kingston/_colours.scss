@@ -32,16 +32,18 @@ $col_fixed_label: $primary;
 
 // $header-top-border-width: 4px;
 
-$mappage-header-height: 64px;
+$mappage-header-height: 70px;
 $body-font: 'Noto Sans', sans-serif;
 $border-radius: 25px;
+//The orginal website uses a width of 1280px, however that looks
+//way to spacious for page with no much elements.
 $container-max-width: 1024px;
 
 @mixin kingston-form-input($margin: 0.5em 0, $padding: 5px) {
     margin: $margin;
     padding: $padding;
     border: 1px solid #bbb;
-    border-radius: $border-radius;
+    border-radius: 5px;
     box-shadow: none;
 
     &:focus {
@@ -65,20 +67,18 @@ $container-max-width: 1024px;
     border-radius: 25px;
     border: 4px solid $primary;
     background: $primary !important;
-    color: $white;
+    color: $white !important;
 
-    &:focus {
-        background: $white;
-        color: $primary;
-        outline:none;
-        text-decoration: underline;
-    }
-
-    &:hover {
-        background: $white;
-        color: $primary;
+    &:hover, &:focus {
+        background: $white !important;
+        color: $primary !important;
+        border-color: $primary;
         outline:none;
         text-decoration: none;
+    }
+
+    &:focus {
+        text-decoration: underline !important;
     }
 }
 
@@ -90,18 +90,14 @@ $container-max-width: 1024px;
     padding: $padding;
     border: 4px solid $blue;
     border-radius: $border-radius;
-    background: $blue;
-    color: $white;
+    background: $white;
+    color: $blue;
 
-    &:focus {
-        background: $white;
-        border: 2px solid $blue;
-        color: $white;
-        outline: none;
-    }
-
-    &:hover {
+    &:hover, &:focus {
         background: $blue;
         color: $white;
+        text-decoration: none;
     }
+
+    &:focus { text-decoration: underline !important;}
 }
