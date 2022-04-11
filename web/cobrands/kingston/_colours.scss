@@ -2,24 +2,106 @@
 
 $menu-image: 'menu-black';
 
-$primary: #a0505c;
-$primary_b: #ffffff;
-$primary_text: #000000;
-$primary_link_color: $primary_text;
-$primary_link_hover_color: rgba($primary_text, 0.8);
+$red: #a0505c;
+$black: #3c3c3c;
+$green: #029A81;
+$blue: #09509d;
+$blue-l1: #0c69cd;
+$white: #fff;
+$yellow: #fdb945;
 
-$link-color: #09509d;
-$link-hover-color: #0c69cd;
-$link-visited-color: #a0505c;
+$primary: $red;
+$primary_b: $black;
+$primary_text: $primary_b;
+$primary_link_color: $blue;
+$primary_link_hover_color: $blue-l1;
+
+$link-color: $blue;
+$link-hover-color: $blue-l1;
+$link-visited-color: $primary;
 
 $base_bg: #eef1e6;
 $base_fg: #1a1a1a;
 
-$nav_background_colour: #fff;
-$nav_colour: #a0505c;
-$nav_hover_background_colour: #fff;
+$nav_background_colour: $white;
+$nav_colour: $primary_b;
+$nav_hover_background_colour: $white;
 
-$col_click_map: #a0505c;
-$col_fixed_label: #a0505c;
+$col_click_map: $primary;
+$col_fixed_label: $primary;
 
 // $header-top-border-width: 4px;
+
+$mappage-header-height: 64px;
+$body-font: 'Noto Sans', sans-serif;
+$border-radius: 25px;
+$container-max-width: 1024px;
+
+@mixin kingston-form-input($margin: 0.5em 0, $padding: 5px) {
+    margin: $margin;
+    padding: $padding;
+    border: 1px solid #bbb;
+    border-radius: $border-radius;
+    box-shadow: none;
+
+    &:focus {
+        outline: none; // hide browser default outline, to match screenshot in branding guidelines
+        border: 1px solid #52A8EC;
+        box-shadow: 0 1px 3px #000, 0 0 8px #52A8EC;
+    }
+}
+
+@mixin kingston-form-label() {
+    color: #555;
+    font-weight: 700;
+}
+
+@mixin kingston-button-primary($padding: 0.33em 1em, $font-size: 1em, $line-height: 1.5em) {
+    font-weight: bold;
+    text-align: center;
+    font-size: $font-size;
+    line-height: $line-height;
+    padding: $padding;
+    border-radius: 25px;
+    border: 4px solid $primary;
+    background: $primary !important;
+    color: $white;
+
+    &:focus {
+        background: $white;
+        color: $primary;
+        outline:none;
+        text-decoration: underline;
+    }
+
+    &:hover {
+        background: $white;
+        color: $primary;
+        outline:none;
+        text-decoration: none;
+    }
+}
+
+@mixin kingston-button-secondary($padding: 0.33em 1em, $font-size: 1em, $line-height: 1.5em) {
+    font-weight: bold;
+    text-align: center;
+    font-size: $font-size;
+    line-height: $line-height;
+    padding: $padding;
+    border: 4px solid $blue;
+    border-radius: $border-radius;
+    background: $blue;
+    color: $white;
+
+    &:focus {
+        background: $white;
+        border: 2px solid $blue;
+        color: $white;
+        outline: none;
+    }
+
+    &:hover {
+        background: $blue;
+        color: $white;
+    }
+}
