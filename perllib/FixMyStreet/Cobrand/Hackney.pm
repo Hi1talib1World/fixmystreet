@@ -3,6 +3,7 @@ use parent 'FixMyStreet::Cobrand::Whitelabel';
 
 use strict;
 use warnings;
+use DateTime::Format::W3CDTF;
 
 use Moo;
 with 'FixMyStreet::Roles::Open311Alloy';
@@ -256,6 +257,18 @@ sub open311_extra_data_include {
 
     my $title = $row->title;
 
+    my $open311_only = [
+        { name => 'report_url',
+          value => $h->{url} },
+        { name => 'title',
+          value => $title },
+        { name => 'description',
+          value => $row->detail },
+        { name => 'category',
+          value => $row->category },
+    ];
+
+
     # Certain categories for the Alloy Environmental Services integration
     # have manually-created extra fields that should be appended to the
     # report title when submitted via Open311.
@@ -269,18 +282,11 @@ sub open311_extra_data_include {
                 $title .= "\n\n" . $_->{description} . "\n" . $_->{value};
             }
         }
-    }
 
-    my $open311_only = [
-        { name => 'report_url',
-          value => $h->{url} },
-        { name => 'title',
-          value => $title },
-        { name => 'description',
-          value => $row->detail },
-        { name => 'category',
-          value => $row->category },
-    ];
+        push @$open311_only,
+            { name => 'requested_datetime',
+              value => DateTime::Format::W3CDTF->format_datetime($row->confirmed->set_nanosecond(0)) };
+    }
 
     if ($contact->email eq "Environment-Graffiti") {
         push @$open311_only,
