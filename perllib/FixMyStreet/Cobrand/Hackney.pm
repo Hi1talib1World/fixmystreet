@@ -288,16 +288,6 @@ sub open311_extra_data_include {
               value => DateTime::Format::W3CDTF->format_datetime($row->confirmed->set_nanosecond(0)) };
     }
 
-    if ($contact->email eq "Environment-Graffiti") {
-        push @$open311_only,
-            { name => 'graffiti_offensive', value => $row->get_extra_field_value('offensive') || '' };
-        push @$open311_only,
-            { name => 'graffiti_size', value => $row->get_extra_field_value('size') || '0' };
-        push @$open311_only,
-            { name => 'graffiti_landtype', value => $row->get_extra_field_value('landtype') || '' };
-    }
-
-
 
     return $open311_only;
 }
