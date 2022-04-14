@@ -128,18 +128,13 @@ sub clear_cached_lookups_property {
 
 sub image_for_service {
     my ($self, $service_id) = @_;
-    my $base = '/cobrands/kingston/images/container-images';
+    my $base = '/cobrands/kingston/container-images';
     my $images = {
-        531 => "$base/refuse-black-sack",
-        532 => "$base/refuse-black-sack",
-        533 => "$base/large-communal-black",
-        535 => "$base/kerbside-green-box-mix",
-        536 => "$base/small-communal-mix",
-        537 => "$base/kerbside-black-box-paper",
-        541 => "$base/small-communal-paper",
-        542 => "$base/food-green-caddy",
-        544 => "$base/food-communal",
-        545 => "$base/garden-waste-bin",
+        357 => "$base/black-bin-blue-lid", # paper and card
+        355 => "$base/black-bin", # refuse
+        # => "$base/brown-bin", # food
+        # => "$base/green-bin", # dry mixed
+        359 => "$base/garden-waste-bin",
     };
     return $images->{$service_id};
 }
@@ -215,23 +210,23 @@ sub bin_services_for_address {
     $self->{c}->stash->{container_actions} = $self->waste_container_actions;
 
     my %service_to_containers = (
-        535 => [ 1 ],
-        536 => [ 3 ],
-        537 => [ 12 ],
-        541 => [ 14 ],
-        542 => [ 9, 10 ],
-        544 => [ 46 ],
-        545 => [ 44 ],
+        #535 => [ 1 ],
+        #536 => [ 3 ],
+        #537 => [ 12 ],
+        #541 => [ 14 ],
+        #542 => [ 9, 10 ],
+        #544 => [ 46 ],
+        #545 => [ 44 ],
     );
     my %request_allowed = map { $_ => 1 } keys %service_to_containers;
     my %quantity_max = (
-        535 => 6,
-        536 => 4,
-        537 => 6,
-        541 => 4,
-        542 => 6,
-        544 => 4,
-        545 => 6,
+        #535 => 6,
+        #536 => 4,
+        #537 => 6,
+        #541 => 4,
+        #542 => 6,
+        #544 => 4,
+        #545 => 6,
     );
 
     $self->{c}->stash->{quantity_max} = \%quantity_max;
@@ -556,16 +551,7 @@ sub waste_get_pro_rata_cost {
 
 sub waste_get_pro_rata_bin_cost {
     my ($self, $end, $start) = @_;
-
-    my $weeks = $end->delta_days($start)->in_units('weeks');
-    $weeks -= 1 if $weeks > 0;
-
-    my $base = $self->feature('payment_gateway')->{pro_rata_minimum};
-    my $weekly_cost = $self->feature('payment_gateway')->{pro_rata_weekly};
-
-    my $cost = $base + ( $weeks * $weekly_cost );
-
-    return $cost;
+    return $self->feature('payment_gateway')->{ggw_cost};
 }
 
 sub waste_display_payment_method {
