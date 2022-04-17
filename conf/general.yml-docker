@@ -68,7 +68,7 @@ EXAMPLE_PLACES: [ 'High Street', 'Main Street' ]
 # An array of languages for the site, in the following format:
 # <language code>,<pretty name>,<locale>
 LANGUAGES:
-  - 'en-gb,English,en_GB'
+  - 'ar-gb,Arabic,ar_GB'
 
 # A postgresql text search configuration value - it should match the
 # configuration used by the problem_fulltext_idx index.
